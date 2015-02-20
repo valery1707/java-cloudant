@@ -453,6 +453,8 @@ public class CloudantClient {
 			
 			props.setProxyHost(connectOptions.getProxyHost());
 			props.setProxyPort(connectOptions.getProxyPort());
+			props.setProxyUser(connectOptions.getProxyUser());
+			props.setProxyPass(connectOptions.getProxyPass());
 		}
 		this.client = new CouchDbClient(props);
 		

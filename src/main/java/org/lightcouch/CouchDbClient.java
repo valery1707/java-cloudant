@@ -16,6 +16,8 @@
 
 package org.lightcouch;
 
+import static java.lang.String.format;
+
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.security.KeyManagementException;
@@ -158,19 +160,48 @@ public class CouchDbClient extends  CouchDbClientBase {
 					.setDefaultRequestConfig(RequestConfig.custom()
 							.setSocketTimeout(props.getSocketTimeout())
 							.setConnectTimeout(props.getConnectionTimeout()).build());
-			if (props.getProxyHost() != null) 
+			
+			// Set this up either way
+			boolean credsProviderUsed = false;
+			CredentialsProvider credsProvider = new BasicCredentialsProvider();
+			
+            if (props.getProxyHost() != null) {
 				clientBuilder.setProxy(new HttpHost(props.getProxyHost(), props.getProxyPort()));
+                if (log.isDebugEnabled()) {
+                    log.debug(format("SETUP > using proxy server %s:%d", props.getProxyHost(), props.getProxyPort()));
+                }
+				
+				if (props.getProxyUser() != null) {
+				    // We have to setup proxy authentication
+	                credsProviderUsed = true;	                
+	                credsProvider.setCredentials(new AuthScope(props.getProxyHost(), props.getProxyPort()),
+	                        new UsernamePasswordCredentials(props.getProxyUser(),props.getProxyPass()));
+	                if (log.isDebugEnabled()) {
+	                    log.debug(format("SETUP > using proxy auth %s", props.getProxyUser()));
+	                }
+                }
+			} else {
+                if (log.isDebugEnabled()) {
+                    log.debug("SETUP > NOT using proxy server");
+                }
+			}
+            
 			clientBuilder.setDefaultCookieStore(cookies); // use AUTH cookies
 			if (props.getUsername() != null) {
 				// this one is for non account endpoints.
-				CredentialsProvider credsProvider = new BasicCredentialsProvider();
+			    credsProviderUsed = true;
 				credsProvider.setCredentials(new AuthScope(props.getHost(),
 						props.getPort()),
 						new UsernamePasswordCredentials(props.getUsername(),
 								props.getPassword()));
-				clientBuilder.setDefaultCredentialsProvider(credsProvider);
 				//props.clearPassword();
 			}
+			
+			// Only attach the credentials provider if we have used it
+			if (credsProviderUsed) {
+	             clientBuilder.setDefaultCredentialsProvider(credsProvider);
+			}
+			
 			registerInterceptors(clientBuilder);
 			return clientBuilder.build();
 		} catch (Exception e) {
@@ -212,6 +243,12 @@ public class CouchDbClient extends  CouchDbClientBase {
 						}
 					}).build();
 
+            // If we are using a proxy we need the http CSF
+            if (props.getProxyHost() != null) {
+                registry.register("http", PlainConnectionSocketFactory.INSTANCE);
+            }
+            
+            // Build the https CSF and then build our registry
 			return registry.register("https", new SSLConnectionSocketFactory(sslcontext, 
 					SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER)).build();
 		} else {

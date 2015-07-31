@@ -36,6 +36,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -128,6 +129,24 @@ public class CloudantClient {
     private String loginUsername;
     private String password;
 
+    /*
+    * LRU cache of database object instances
+    * Use the default load factor of 0.75 and calculate initial capacity to avoid rehashing
+    * and minimise clashses.
+    * This is an access ordered map. The eldest entry is the one accessed least recently.
+    *
+    * Although this map will be accessed from multiple threads it does not need ot be synchronized
+    * because the Database objects do not store state so can be re-created. This is preferred to any
+    * locking that could bottleneck performance.
+    */
+    private static final int cacheCapacity = 100;
+    private final LinkedHashMap<String, Database> databasesInstanceCache = new
+            LinkedHashMap<String, Database>((cacheCapacity * 4 / 3) + 1, 0.75f, true) {
+
+                protected boolean removeEldestEntry(Map.Entry eldest) {
+                    return size() > cacheCapacity;
+                }
+            };
 
     /**
      * Constructs a new instance of this class and connects to the cloudant server with the
@@ -282,7 +301,17 @@ public class CloudantClient {
      * @return Database object
      */
     public Database database(String name, boolean create) {
-        return new Database(this, client.database(name, create));
+        Database db;
+        //return an existing object if one exists
+        if ((db = databasesInstanceCache.get(name)) == null) {
+            // no object existed, create one and put in the map
+            // the database objects for a DB of the same name are transposable so ignore the fact
+            // that multiple simultaneous accesses could create/replace we can later return the last
+            // created with no issues
+            databasesInstanceCache.put(name, (db = new Database(this, client.database(name,
+                    create))));
+        }
+        return db;
     }
 
 

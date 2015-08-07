@@ -1,3 +1,5 @@
+- [IMPROVED] Removed HTTP GET request when instantiating `Database` objects
+
 # 1.1.0 (2015-07-31)
 
 - [BREAKING CHANGE] Hostname verification and certificate chain

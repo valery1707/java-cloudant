@@ -167,7 +167,7 @@ public class CloudantClientTests {
     @Category(RequiresDB.class)
     public void nonExistentDatabaseException() {
         //try and get a DB that doesn't exist
-        Database db = cookieBasedClient.database("notReallyThere", false);
+        Database db = cookieBasedClient.database("not_really_there", false);
         //try an operation against the non-existant DB
         db.info();
     }

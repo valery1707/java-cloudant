@@ -42,7 +42,7 @@ public class Serializer {
             return null;
         } catch (ClassNotFoundException c) {
             System.out
-                    .println("datalake.util.Serializer.y.deserializeFromDisk: class not found");
+                    .println("Serializer.deserializeFromDisk: class not found");
             c.printStackTrace();
             return null;
         }
@@ -60,7 +60,8 @@ public class Serializer {
             out.writeObject(r);
             bytes = bos.toByteArray();
         } catch (IOException ex) {
-            // ignore close exception
+            System.out.println("Exception in Serializer.serializeToByteArray  " + ",  " + ex.getMessage() + " "
+                    + ex.getStackTrace());
         } finally {
             try {
                 if (out != null) {
@@ -87,11 +88,12 @@ public class Serializer {
             in = new ObjectInputStream(bis);
             r = (T) in.readObject();
         } catch (IOException i) {
+            System.out.println("Exception in Serializer.deserializeFromByteArray  " + ",  " + i.getMessage());
             i.printStackTrace();
             return null;
         } catch (ClassNotFoundException c) {
             System.out
-                    .println("datalake.util.Serializer.deserializeFromByteArray: class not found");
+                    .println("Serializer.deserializeFromByteArray: class not found");
             c.printStackTrace();
             return null;
         } finally {
@@ -229,7 +231,7 @@ public class Serializer {
             return null;
         } catch (ClassNotFoundException c) {
             System.out
-                    .println("Error: Class not found in datalake.util.Serializer.deserializeFromStream");
+                    .println("Error: Class not found in Serializer.deserializeFromStream");
             c.printStackTrace();
             return null;
         }

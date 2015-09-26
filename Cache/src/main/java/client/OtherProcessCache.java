@@ -3,22 +3,23 @@
  */
 package client;
 
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-//java.util.Date.getTime() method returns how many milliseconds have passed since 
-//January 1, 1970, 00:00:00 GMT
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import redis.clients.jedis.BinaryJedis;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
 import redis.clients.jedis.Jedis;
 
 /**
  * @author ArunIyengar
  * 
  */
-public class OtherProcessCache<K, V> {
+public class OtherProcessCache<K, V> implements Cache<K, V> {
 
-    private BinaryJedis cache;
+    private Jedis cache;
 
     /**
      * Constructor
@@ -28,7 +29,7 @@ public class OtherProcessCache<K, V> {
      * 
      * */
     public OtherProcessCache(String host) {
-        cache = new BinaryJedis(host);
+        cache = new Jedis(host);
     }
 
     /**
@@ -41,7 +42,7 @@ public class OtherProcessCache<K, V> {
      * 
      * */
     public OtherProcessCache(String host, int port) {
-        cache = new BinaryJedis(host, port);
+        cache = new Jedis(host, port);
     }
 
     /**
@@ -56,7 +57,7 @@ public class OtherProcessCache<K, V> {
      * 
      * */
     public OtherProcessCache(String host, int port, int timeout) {
-        cache = new BinaryJedis(host, port, timeout);
+        cache = new Jedis(host, port, timeout);
     }
 
     /**
@@ -87,6 +88,19 @@ public class OtherProcessCache<K, V> {
     }
 
     /**
+     * delete one or more key-value pairs from the cache
+     * 
+     * @param keys
+     *            iterable data structure containing the keys to delete
+     * 
+     * */
+    public void deleteAll(List<K> keys) {
+        for (K key : keys) {
+            cache.del(Serializer.serializeToByteArray(key));
+        }
+    }
+
+    /**
      * delete all key-value pairs from all databases
      * 
      * */
@@ -104,12 +118,7 @@ public class OtherProcessCache<K, V> {
      * 
      * */
     public V get(K key) {
-        byte[] rawValue = cache.get(Serializer.serializeToByteArray(key));
-        if (rawValue == null)
-            return null;
-        CacheEntry<V> cacheEntry = Serializer
-                .deserializeFromByteArray(rawValue);
-        ;
+        CacheEntry<V> cacheEntry = getCacheEntry(key);
         if (cacheEntry == null)
             return null;
         if (cacheEntry.getExpirationTime() >= Util.getTime())
@@ -118,14 +127,91 @@ public class OtherProcessCache<K, V> {
     }
 
     /**
-     * Return BinaryJedis data structure so users can make direct API calls to
-     * it
+     * look up one or more values in the cache. Don't return expired values.
      * 
-     * @return BinaryJedis data structure corresponding to underlying cache
+     * @param keys
+     *            iterable data structure containing the keys to look up
+     * @return map containing key-value pairs corresponding to unexpired data in
+     *         the cache
      * 
      * */
-    public BinaryJedis getBinaryJedis() {
+    public Map<K, V> getAll(List<K> keys) {
+        Map<K, V> hashMap = new HashMap<K, V>();
+        for (K key : keys) {
+            V value = get(key);
+            if (value != null) {
+                hashMap.put(key, value);
+            }
+        }
+        return hashMap;
+    }
+
+    /**
+     * look up a CacheEntry in the cache. The CacheEntry may correspond to
+     * expired data. This method can be used to revalidate cached objects whose
+     * expiration times have passed
+     * 
+     * @param key
+     *            key corresponding to value
+     * @return value corresponding to key (may be expired), null if key is not
+     *         in cache
+     * 
+     * */
+    public CacheEntry<V> getCacheEntry(K key) {
+        byte[] rawValue = cache.get(Serializer.serializeToByteArray(key));
+        if (rawValue == null)
+            return null;
+        return Serializer.deserializeFromByteArray(rawValue);
+    }
+
+    
+    /**
+     * Return Jedis data structure so users can make direct API calls to
+     * it
+     * 
+     * @return Jedis data structure corresponding to underlying cache
+     * 
+     * */
+    public Jedis getJedis() {
         return cache;
+    }
+
+    /**
+     * get cache statistics
+     * 
+     * @return data structure containing statistics
+     * 
+     * */
+    public CacheStats2 getStatistics() {
+        return new CacheStats2(cache.info());
+    }
+
+    /**
+     * Output contents of current database
+     * */
+    public void print() {
+        System.out.println("\nContents of Entire Cache\n");
+        StringRedisSerializer srs = new StringRedisSerializer();
+        // If we know that keys are strings, we don't have to use
+        // StringRedisSerializer
+        Set<byte[]> keys = cache.keys(srs.serialize("*"));
+        for (byte[] key : keys) {
+            String keyString = Serializer.deserializeFromByteArray(key);
+            System.out.println("Key: " + keyString);
+            byte[] rawValue = cache.get(key);
+            if (rawValue == null) {
+                System.out.println("No value found in cache for keyString " + keyString + "\n");
+                continue;
+            }
+            CacheEntry<V> cacheEntry = Serializer.deserializeFromByteArray(rawValue);
+            if (cacheEntry == null) {
+                System.out.println("CacheEntry is null for keyString " + keyString + "\n");
+                continue;
+            }
+            cacheEntry.print();
+            System.out.println();
+        }
+        System.out.println("Cache size is: " + size());
     }
 
     /**
@@ -142,10 +228,38 @@ public class OtherProcessCache<K, V> {
     public void put(K key, V value, long lifetime) {
         CacheEntry<V> cacheEntry = new CacheEntry<V>(value, lifetime
                 + Util.getTime());
+        put(key, cacheEntry);
+    }
+    
+    private void put(K key, CacheEntry<V> cacheEntry) {
         byte[] array1 = Serializer.serializeToByteArray(key);
         byte[] array2 = Serializer.serializeToByteArray(cacheEntry);
         cache.set(array1, array2);
+        
     }
+    
+    /**
+     * cache one or more key-value pairs
+     * 
+     * @param map
+     *            map containing key-value pairs to cache
+     * @param value
+     *            value associated with each key-value pair
+     * @param lifetime
+     *            lifetime in milliseconds associated with each key-value pair
+     * 
+     * */
+    public void putAll(Map<K, V> map, long lifetime) {
+        Date date = new Date();
+
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            CacheEntry<V> cacheEntry = new CacheEntry<V>(entry.getValue(),
+                    lifetime + date.getTime());
+            put(entry.getKey(), cacheEntry);
+        }
+
+    }
+
 
     /**
      * Select the DB having the specified zero-based numeric index.
@@ -155,67 +269,21 @@ public class OtherProcessCache<K, V> {
         return cache.select(index);
     }
 
-    public static void test3() {
-        OtherProcessCache<String, HashMap<String, Integer>> opc = new OtherProcessCache<String, HashMap<String, Integer>>(
-                "localhost", 6379, 60);
-        String key1 = "key1";
-        String key2 = "key2";
-        String key3 = "key3";
-        try {
-
-            HashMap<String, Integer> hm = new HashMap<String, Integer>();
-            hm.put(key1, 22);
-            hm.put(key2, 23);
-            hm.put(key3, 24);
-            System.out.println("original hash table: " + hm);
-            opc.put("bar", hm, 5000);
-            HashMap<String, Integer> hm2 = opc.get("bar");
-            System.out.println("fetched hash table: " + hm2);
-        } finally {
-            opc.close();
-        }
-        System.out.println("test3 has finished executing");
-    }
-
-    public static void test2() {
-        OtherProcessCache<String, String> opc = new OtherProcessCache<String, String>(
-                "localhost", 6379, 60);
-        String key1 = "foo";
-        String key2 = "bar";
-
-        try {
-            opc.put(key1, key2, 5000);
-            String key3 = opc.get(key1);
-            System.out.println("Value of lookup is: " + key3);
-        } finally {
-            opc.close();
-        }
-        System.out.println("test2 has finished executing");
-    }
-
-    public static void test1() {
-        BinaryJedis jedis;
-        String key1 = "foo";
-        String key2 = "bar";
-        byte[] val1 = Serializer.serializeToByteArray(key1);
-        byte[] val2 = Serializer.serializeToByteArray(key2);
-        jedis = new Jedis("localhost", 6379, 60);
-        jedis.set(val1, val2);
-        byte[] val3 = jedis.get(val1);
-        String key3 = Serializer.deserializeFromByteArray(val3);
-        System.out.println("lookup value is: " + key3);
-        jedis.close();
-        System.out.println("test1 has finished executing");
-
-    }
-
     /**
-     * @param args
-     */
-    public static void main(String[] args) {
-        // test1();
-        // test2();
-        test3();
+     * Return number of objects in cache
+     * 
+     * */
+    public long size() {
+        return cache.dbSize();
+    }
+
+    void lookup(K key) {
+        System.out.println("lookup: CacheEntry value for key: " + key);
+        CacheEntry<V> cacheEntry = getCacheEntry(key);
+        if (cacheEntry == null)
+            System.out.println("Key " + key + " not in cache");
+        else
+            cacheEntry.print();
     }
 
 }

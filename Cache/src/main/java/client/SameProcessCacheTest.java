@@ -82,7 +82,7 @@ public class SameProcessCacheTest {
         System.out.println("Cache size: " + spc.size());
         spc.print();
         spc.clear();
-        assertEquals("Cache size should be 3", 0, spc.size());
+        assertEquals("Cache size should be 0", 0, spc.size());
         System.out.println("Cache size: " + spc.size());
         spc.print();
     }
@@ -154,5 +154,5 @@ public class SameProcessCacheTest {
         spc.print();
         assertEquals("Cache size should be 1", 1, spc.size());
     }
-
+    
 }

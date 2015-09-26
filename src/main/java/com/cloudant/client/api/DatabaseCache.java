@@ -21,6 +21,7 @@ import com.cloudant.client.api.model.Params;
 
 import client.Cache;
 import client.CacheType;
+import client.OtherProcessCache;
 import client.SameProcessCache;
 import client.Util;
 
@@ -36,29 +37,57 @@ public class DatabaseCache {
     private Cache<String, Object> cache;
 
     /**
+     * Constructor for in-process cache
      * 
      * @param database
      *            : data structure with information about the database
      *            connection
      * @param cacheSize
      *            : maximum number of objects allowed in cache
-     * @param type
-     *            : SAME_PROCESS or OTHER_PROCESS. Currently, only SAME_PROCESS
-     *            is implemented.
      */
-    public DatabaseCache(Database database, long cacheSize, CacheType type)
-            throws Exception {
+    public DatabaseCache(Database database, long cacheSize) {
         client = database.getClient();
         db = database.getDb();
-        switch (type) {
-        case SAME_PROCESS:
-            cache = new SameProcessCache<String, Object>(cacheSize);
-            break;
-        default:
-            throw new Exception(
-                    "Attempt to create a cache type which is not yet supported: "
-                            + type);
-        }
+        cache = new SameProcessCache<String, Object>(cacheSize);
+     }
+
+    /**
+     * Constructor for remote-process cache
+     * 
+     * @param database
+     *            : data structure with information about the database
+     *            connection
+     * @param cacheSize
+     *            : maximum number of objects allowed in cache
+     * @param host
+     *            post where cache is running
+     * @param port
+     *            port number
+     */
+    public DatabaseCache(Database database, long cacheSize, String host, int port) {
+        client = database.getClient();
+        db = database.getDb();
+        cache = new OtherProcessCache<String, Object>(host, port);
+    }
+
+    /**
+     * Constructor for remote-process cache
+     * 
+     * @param database
+     *            : data structure with information about the database connection
+     * @param cacheSize
+     *            : maximum number of objects allowed in cache
+     * @param host
+     *            post where cache is running
+     * @param port
+     *            port number
+     * @param timeout
+     *            number of seconds before Jedis closes an idle connection
+     */
+    public DatabaseCache(Database database, long cacheSize, String host, int port, int timeout) {
+        client = database.getClient();
+        db = database.getDb();
+        cache = new OtherProcessCache<String, Object>(host, port, timeout);
     }
 
     /**
@@ -400,8 +429,8 @@ public class DatabaseCache {
      * @return {@link Response}
      */
     public <T> com.cloudant.client.api.model.Response remove(String id, T object) {
-        Response couchDbResponse = db.remove(object);
         cache.delete(id);
+        Response couchDbResponse = db.remove(object);
         com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model.Response(
                 couchDbResponse);
         return response;

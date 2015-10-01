@@ -22,45 +22,17 @@ import org.junit.Test;
  * @author ArunIyengar
  *
  */
-public class OtherProcessCacheTest {
+public class RedisCacheTest {
     
     int numObjects = 2000;
-    OtherProcessCache<String, Integer> opc = new OtherProcessCache<String, Integer>
+    RedisCache<String, Integer> opc = new RedisCache<String, Integer>
         ("localhost", 6379, 60);
     String key1 = "key1";
     String key2 = "key2";
     String key3 = "key3";
     long lifetime = 3000;
 
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-    }
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-    }
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @Before
-    public void setUp() throws Exception {
-    }
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @After
-    public void tearDown() throws Exception {
-    }
-
+    
     @Test
     public void testPutGet() {
         opc.clear();
@@ -159,7 +131,7 @@ public class OtherProcessCacheTest {
 
     @Test
     public void testHashMap() {
-        OtherProcessCache<String, HashMap<String, Integer>> opc2 = new OtherProcessCache<String, HashMap<String, Integer>>(
+        RedisCache<String, HashMap<String, Integer>> opc2 = new RedisCache<String, HashMap<String, Integer>>(
                 "localhost", 6379, 60);
 
         String key1 = "key1";
@@ -183,7 +155,7 @@ public class OtherProcessCacheTest {
     
     @Test
     public void testDeleteAll() {
-        OtherProcessCache<String, Integer> opc2 = new OtherProcessCache<String, Integer>(
+        RedisCache<String, Integer> opc2 = new RedisCache<String, Integer>(
                 "localhost", 6379, 60);
         String key1 = "foo";
         String key2 = "bar";

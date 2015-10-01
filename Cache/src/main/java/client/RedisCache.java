@@ -17,7 +17,7 @@ import redis.clients.jedis.Jedis;
  * @author ArunIyengar
  * 
  */
-public class OtherProcessCache<K, V> implements Cache<K, V> {
+public class RedisCache<K, V> implements Cache<K, V> {
 
     private Jedis cache;
 
@@ -28,7 +28,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            post where Redis is running
      * 
      * */
-    public OtherProcessCache(String host) {
+    public RedisCache(String host) {
         cache = new Jedis(host);
     }
 
@@ -41,7 +41,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            port number
      * 
      * */
-    public OtherProcessCache(String host, int port) {
+    public RedisCache(String host, int port) {
         cache = new Jedis(host, port);
     }
 
@@ -56,7 +56,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            number of seconds before Jedis closes an idle connection
      * 
      * */
-    public OtherProcessCache(String host, int port, int timeout) {
+    public RedisCache(String host, int port, int timeout) {
         cache = new Jedis(host, port, timeout);
     }
 
@@ -64,6 +64,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      * delete all key-value pairs from the current database
      * 
      * */
+    @Override
     public void clear() {
         cache.flushDB();
     }
@@ -83,6 +84,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            key corresponding to value
      * 
      * */
+    @Override
     public void delete(K key) {
         cache.del(Serializer.serializeToByteArray(key));
     }
@@ -94,6 +96,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            iterable data structure containing the keys to delete
      * 
      * */
+    @Override
     public void deleteAll(List<K> keys) {
         for (K key : keys) {
             cache.del(Serializer.serializeToByteArray(key));
@@ -117,6 +120,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *         value is expired
      * 
      * */
+    @Override
     public V get(K key) {
         CacheEntry<V> cacheEntry = getCacheEntry(key);
         if (cacheEntry == null)
@@ -135,6 +139,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *         the cache
      * 
      * */
+    @Override
     public Map<K, V> getAll(List<K> keys) {
         Map<K, V> hashMap = new HashMap<K, V>();
         for (K key : keys) {
@@ -157,6 +162,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *         in cache
      * 
      * */
+    @Override
     public CacheEntry<V> getCacheEntry(K key) {
         byte[] rawValue = cache.get(Serializer.serializeToByteArray(key));
         if (rawValue == null)
@@ -177,13 +183,15 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
     }
 
     /**
-     * get cache statistics
+     * get cache statistics.  For Redis, cache statistics are contained in a string.  The string is
+     * returned by RedisCacheStats.getStats()
      * 
      * @return data structure containing statistics
      * 
      * */
-    public CacheStats2 getStatistics() {
-        return new CacheStats2(cache.info());
+    @Override
+    public RedisCacheStats getStatistics() {
+        return new RedisCacheStats(cache.info());
     }
 
     /**
@@ -225,6 +233,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            lifetime in milliseconds associated with data
      * 
      * */
+    @Override
     public void put(K key, V value, long lifetime) {
         CacheEntry<V> cacheEntry = new CacheEntry<V>(value, lifetime
                 + Util.getTime());
@@ -249,6 +258,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      *            lifetime in milliseconds associated with each key-value pair
      * 
      * */
+    @Override
     public void putAll(Map<K, V> map, long lifetime) {
         Date date = new Date();
 
@@ -273,6 +283,7 @@ public class OtherProcessCache<K, V> implements Cache<K, V> {
      * Return number of objects in cache
      * 
      * */
+    @Override
     public long size() {
         return cache.dbSize();
     }

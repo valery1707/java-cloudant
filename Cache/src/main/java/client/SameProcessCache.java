@@ -4,8 +4,6 @@
 package client;
 
 import java.util.Date;
-// java.util.Date.getTime() method returns how many milliseconds have passed since 
-// January 1, 1970, 00:00:00 GMT
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +43,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      * delete all key-value pairs from the cache
      * 
      * */
+    @Override
     public void clear() {
         cache.invalidateAll();
     }
@@ -56,6 +55,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *            key corresponding to value
      * 
      * */
+    @Override
     public void delete(K key) {
         cache.invalidate(key);
     }
@@ -67,6 +67,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *            iterable data structure containing the keys to delete
      * 
      * */
+    @Override
     public void deleteAll(List<K> keys) {
         cache.invalidateAll(keys);
     }
@@ -80,6 +81,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *         value is expired
      * 
      * */
+    @Override
     public V get(K key) {
         CacheEntry<V> cacheEntry = cache.getIfPresent(key);
         if (cacheEntry == null)
@@ -98,6 +100,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *         the cache
      * 
      * */
+    @Override
     public Map<K, V> getAll(List<K> keys) {
         Map<K, CacheEntry<V>> cacheMap = cache.getAllPresent(keys);
         Map<K, V> hashMap = new HashMap<K, V>();
@@ -122,6 +125,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *         in cache
      * 
      * */
+    @Override
     public CacheEntry<V> getCacheEntry(K key) {
         return cache.getIfPresent(key);
     }
@@ -132,6 +136,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      * @return data structure containing statistics
      * 
      * */
+    @Override
     public CacheStats1 getStatistics() {
         return new CacheStats1(cache.stats());
     }
@@ -147,6 +152,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *            lifetime in milliseconds associated with data
      * 
      * */
+    @Override
     public void put(K key, V value, long lifetime) {
         CacheEntry<V> cacheEntry = new CacheEntry<V>(value, lifetime
                 + Util.getTime());
@@ -164,6 +170,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *            lifetime in milliseconds associated with each key-value pair
      * 
      * */
+    @Override
     public void putAll(Map<K, V> map, long lifetime) {
         Date date = new Date();
 
@@ -179,6 +186,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      * Return number of objects in cache
      * 
      * */
+    @Override
     public long size() {
         return cache.size();
     }
@@ -205,32 +213,6 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
             System.out.println();
         }
         System.out.println("Cache size is: " + size());
-    }
-
-    /**
-     * @param args
-     */
-    public static void main(String[] args) {
-        // TODO Auto-generated method stub
-        int numObjects = 2000;
-        SameProcessCache<String, Integer> spc = new SameProcessCache<String, Integer>(
-                numObjects);
-        String key1, key2, key3;
-        key1 = "key1";
-        key2 = "key2";
-        key3 = "key3";
-        long lifetime = 3000;
-        spc.put(key1, 42, lifetime);
-        spc.lookup(key1);
-        spc.lookup(key2);
-        spc.put(key2, 43, lifetime);
-        spc.put(key3, 44, lifetime);
-        spc.print();
-        CacheStats1 stats1 = spc.getStatistics();
-        System.out.println("Cache size: " + spc.size());
-        System.out.println("Hit rate: " + stats1.getStats().hitRate());
-        System.out.println("Main finished executing");
-
     }
 
 }

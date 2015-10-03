@@ -3,7 +3,6 @@
  */
 package client;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,10 +122,12 @@ public class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public V get(K key) {
         CacheEntry<V> cacheEntry = getCacheEntry(key);
-        if (cacheEntry == null)
+        if (cacheEntry == null) {
             return null;
-        if (cacheEntry.getExpirationTime() >= Util.getTime())
+        }
+        if (cacheEntry.getExpirationTime() >= Util.getTime()) {
             return cacheEntry.getValue();
+        }
         return null;
     }
 
@@ -165,8 +166,9 @@ public class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public CacheEntry<V> getCacheEntry(K key) {
         byte[] rawValue = cache.get(Serializer.serializeToByteArray(key));
-        if (rawValue == null)
+        if (rawValue == null) {
             return null;
+        }
         return Serializer.deserializeFromByteArray(rawValue);
     }
 
@@ -260,11 +262,10 @@ public class RedisCache<K, V> implements Cache<K, V> {
      * */
     @Override
     public void putAll(Map<K, V> map, long lifetime) {
-        Date date = new Date();
-
+        long expirationTime = Util.getTime() + lifetime;
         for (Map.Entry<K, V> entry : map.entrySet()) {
             CacheEntry<V> cacheEntry = new CacheEntry<V>(entry.getValue(),
-                    lifetime + date.getTime());
+                    expirationTime);
             put(entry.getKey(), cacheEntry);
         }
 
@@ -291,10 +292,12 @@ public class RedisCache<K, V> implements Cache<K, V> {
     void lookup(K key) {
         System.out.println("lookup: CacheEntry value for key: " + key);
         CacheEntry<V> cacheEntry = getCacheEntry(key);
-        if (cacheEntry == null)
+        if (cacheEntry == null) {
             System.out.println("Key " + key + " not in cache");
-        else
+        }
+        else {
             cacheEntry.print();
+        }
     }
 
 }

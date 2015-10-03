@@ -10,7 +10,7 @@ import java.util.Map;
 public interface Cache<K, V> {
 
     /**
-     * delete all key-value pairs from the cache
+     * delete all entries from the cache
      * 
      * */
     public void clear();

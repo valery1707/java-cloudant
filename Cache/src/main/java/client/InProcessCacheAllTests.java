@@ -5,7 +5,7 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ SameProcessCacheTest.class })
-public class SameProcessCacheAllTests {
+@SuiteClasses({ InProcessCacheTest.class })
+public class InProcessCacheAllTests {
 
 }

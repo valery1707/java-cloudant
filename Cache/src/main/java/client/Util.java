@@ -20,7 +20,6 @@ import java.util.zip.GZIPOutputStream;
  */
 public class Util {
 
-    private final static String DEFAULT_CIPHER = "DES/CBC/PKCS5Padding";
     /**
      * compress a serializable object using gzip
      * 
@@ -108,9 +107,9 @@ public class Util {
      * @return Milliseconds since January 1, 1970
      * 
      * */
-    //java.util.Date.getTime() method returns how many milliseconds have passed since 
-    //January 1, 1970, 00:00:00 GMT
       public static long getTime() {
         return (new Date()).getTime();
+        //java.util.Date.getTime() method returns how many milliseconds have passed since 
+        //January 1, 1970, 00:00:00 GMT
     }
 }

@@ -11,7 +11,7 @@ package client;
 /*
  * This class implements cache statistics for Redis.  In Redis, statistics are returned as a string.
  */
-public class RedisCacheStats implements Stats {
+public class RedisCacheStats {
     private String cacheStats;
 
     RedisCacheStats(String stats) {

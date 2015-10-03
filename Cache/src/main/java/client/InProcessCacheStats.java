@@ -9,10 +9,10 @@ import com.google.common.cache.CacheStats;
  * @author ArunIyengar
  * 
  */
-public class CacheStats1 implements Stats {
+public class InProcessCacheStats {
     private CacheStats cacheStats;
 
-    CacheStats1(CacheStats stats) {
+    InProcessCacheStats(CacheStats stats) {
         cacheStats = stats;
     }
 

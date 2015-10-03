@@ -21,8 +21,8 @@ import com.cloudant.client.api.model.Params;
 
 import client.Cache;
 import client.CacheType;
-import client.OtherProcessCache;
-import client.SameProcessCache;
+import client.RedisCache;
+import client.InProcessCache;
 import client.Util;
 
 /**
@@ -48,7 +48,7 @@ public class DatabaseCache {
     public DatabaseCache(Database database, long cacheSize) {
         client = database.getClient();
         db = database.getDb();
-        cache = new SameProcessCache<String, Object>(cacheSize);
+        cache = new InProcessCache<String, Object>(cacheSize);
      }
 
     /**
@@ -67,7 +67,7 @@ public class DatabaseCache {
     public DatabaseCache(Database database, long cacheSize, String host, int port) {
         client = database.getClient();
         db = database.getDb();
-        cache = new OtherProcessCache<String, Object>(host, port);
+        cache = new RedisCache<String, Object>(host, port);
     }
 
     /**
@@ -82,14 +82,29 @@ public class DatabaseCache {
      * @param port
      *            port number
      * @param timeout
-     *            number of seconds before Jedis closes an idle connection
+     *            number of seconds before an idle connection is closed
      */
     public DatabaseCache(Database database, long cacheSize, String host, int port, int timeout) {
         client = database.getClient();
         db = database.getDb();
-        cache = new OtherProcessCache<String, Object>(host, port, timeout);
+        cache = new RedisCache<String, Object>(host, port, timeout);
     }
 
+    /**
+     * Constructor for arbitrary cache.  Existing cache instance is passed as a parameter
+     * 
+     * @param database
+     *            : data structure with information about the database connection
+     * @param cacheInstance
+     *            : cache instance which has already been created and initialized
+     */
+    public DatabaseCache(Database database, Cache<String, Object> cacheInstance) {
+        client = database.getClient();
+        db = database.getDb();
+        cache = cacheInstance;
+    }
+
+    
     /**
      * put an object into the cache
      * 
@@ -234,10 +249,12 @@ public class DatabaseCache {
      * @return true If the document is found, false otherwise.
      */
     public boolean contains(String id) {
-        if (cache.get(id) != null)
+        if (cache.get(id) != null) {
             return true;
-        else
+        }
+        else {
             return db.contains(id);
+        }
     }
 
     /**
@@ -246,10 +263,10 @@ public class DatabaseCache {
      * If the object doesn't have an <code>_id</code> value, the code will
      * assign a <code>UUID</code> as the document id.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to save
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      * @throws DocumentConflictException
@@ -271,20 +288,20 @@ public class DatabaseCache {
      * If the object doesn't have an <code>_id</code> value, the code will
      * assign a <code>UUID</code> as the document id.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to save
      * @param writeQuorum
      *            the write Quorum
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      * @throws DocumentConflictException
      *             If a conflict is detected during the save.
      * @return {@link Response}
      */
-    public <T> com.cloudant.client.api.model.Response save(String id, T object,
-            long lifetime, int writeQuorum) {
+    public <T> com.cloudant.client.api.model.Response save(String id, T object, int writeQuorum,
+            long lifetime) {
         Response couchDbResponse = client.put(getDBUri(), object, true,
                 writeQuorum, client.getGson());
         com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model.Response(
@@ -298,10 +315,10 @@ public class DatabaseCache {
      * <p>
      * The database will be responsible for generating the document id.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to save
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      * @return {@link Response}
@@ -321,18 +338,18 @@ public class DatabaseCache {
      * <p>
      * The database will be responsible for generating the document id.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to save
      * @param writeQuorum
      *            the write Quorum
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      * @return {@link Response}
      */
-    public <T> com.cloudant.client.api.model.Response post(String id, T object,
-            long lifetime, int writeQuorum) {
+    public <T> com.cloudant.client.api.model.Response post(String id, T object, int writeQuorum,
+            long lifetime) {
         assertNotEmpty(object, "object");
         HttpResponse response = null;
         try {
@@ -353,10 +370,10 @@ public class DatabaseCache {
     /**
      * Saves a document with <tt>batch=ok</tt> query param.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to save.
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      */
@@ -369,10 +386,10 @@ public class DatabaseCache {
      * Updates an object in the database, the object must have the correct
      * <code>_id</code> and <code>_rev</code> values.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to update
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      * @throws DocumentConflictException
@@ -392,12 +409,12 @@ public class DatabaseCache {
      * Updates an object in the database, the object must have the correct
      * <code>_id</code> and <code>_rev</code> values.
      * 
+     * @param id
+     *            : This method caches "object" using key "id"
      * @param object
      *            The object to update
      * @param writeQuorum
      *            the write Quorum
-     * @param id
-     *            : key to be associated with cached object
      * @param lifetime
      *            : lifetime of the object for the cache in milliseconds
      * @throws DocumentConflictException
@@ -405,7 +422,7 @@ public class DatabaseCache {
      * @return {@link Response}
      */
     public <T> com.cloudant.client.api.model.Response update(String id,
-            T object, long lifetime, int writeQuorum) {
+            T object, int writeQuorum, long lifetime) {
         Response couchDbResponse = client.put(getDBUri(), object, false,
                 writeQuorum, client.getGson());
         com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model.Response(
@@ -415,7 +432,7 @@ public class DatabaseCache {
     }
 
     /**
-     * Removes a document from the database.
+     * Removes a document from the database.  
      * <p>
      * The object must have the correct <code>_id</code> and <code>_rev</code>
      * values.
@@ -423,7 +440,7 @@ public class DatabaseCache {
      * @param object
      *            The document to remove as object.
      * @param id
-     *            : key to be associated with cached object
+     *            : key identifying object to remove from cache
      * @throws NoDocumentException
      *             If the document is not found in the database.
      * @return {@link Response}

@@ -3,7 +3,7 @@
  */
 package client;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,10 +12,6 @@ import java.util.Map;
 
 import javax.crypto.SealedObject;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -111,7 +107,7 @@ public class RedisCacheTest {
         list.add(key2);
         list.add(key3);
         Map<String, Integer> map = opc.getAll(list);
-        SameProcessCacheTest.printMap(map);
+        InProcessCacheTest.printMap(map);
         assertEquals("Returned map size should be 3", 3, map.size());
         opc.clear();
     }

@@ -3,7 +3,6 @@
  */
 package client;
 
-import java.util.Date;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,11 +12,14 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
 /**
- * @author ArunIyengar This cache implementation stores data in the same process
- *         as the executing program
+ * @author ArunIyengar 
  * 
  */
-public class SameProcessCache<K, V> implements Cache<K, V> {
+
+/*
+ * This cache implementation stores data in the same process as the executing program
+ */
+public class InProcessCache<K, V> implements Cache<K, V> {
 
     private LoadingCache<K, CacheEntry<V>> cache;
 
@@ -29,7 +31,7 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      *            replacement starts
      * 
      * */
-    public SameProcessCache(long maxObjects) {
+    public InProcessCache(long maxObjects) {
         cache = CacheBuilder.newBuilder().maximumSize(maxObjects)
                 .build(new CacheLoader<K, CacheEntry<V>>() {
                     public CacheEntry<V> load(K key) throws Exception {
@@ -84,10 +86,12 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
     @Override
     public V get(K key) {
         CacheEntry<V> cacheEntry = cache.getIfPresent(key);
-        if (cacheEntry == null)
+        if (cacheEntry == null) {
             return null;
-        if (cacheEntry.getExpirationTime() >= Util.getTime())
+        }
+        if (cacheEntry.getExpirationTime() >= Util.getTime()) {
             return cacheEntry.getValue();
+        }
         return null;
     }
 
@@ -104,12 +108,13 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
     public Map<K, V> getAll(List<K> keys) {
         Map<K, CacheEntry<V>> cacheMap = cache.getAllPresent(keys);
         Map<K, V> hashMap = new HashMap<K, V>();
-        Date date = new Date();
+        long currentTime = Util.getTime();
 
         for (Map.Entry<K, CacheEntry<V>> entry : cacheMap.entrySet()) {
             CacheEntry<V> cacheEntry = entry.getValue();
-            if (cacheEntry.getExpirationTime() >= date.getTime())
+            if (cacheEntry.getExpirationTime() >= currentTime) {
                 hashMap.put(entry.getKey(), cacheEntry.getValue());
+            }
         }
         return hashMap;
     }
@@ -137,8 +142,8 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      * 
      * */
     @Override
-    public CacheStats1 getStatistics() {
-        return new CacheStats1(cache.stats());
+    public InProcessCacheStats getStatistics() {
+        return new InProcessCacheStats(cache.stats());
     }
 
     /**
@@ -172,11 +177,10 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
      * */
     @Override
     public void putAll(Map<K, V> map, long lifetime) {
-        Date date = new Date();
-
+        long expirationTime = Util.getTime() + lifetime;
         for (Map.Entry<K, V> entry : map.entrySet()) {
             CacheEntry<V> cacheEntry = new CacheEntry<V>(entry.getValue(),
-                    lifetime + date.getTime());
+                    expirationTime);
             cache.put(entry.getKey(), cacheEntry);
         }
 
@@ -194,10 +198,12 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
     void lookup(K key) {
         System.out.println("lookup: CacheEntry value for key: " + key);
         CacheEntry<V> cacheEntry = cache.getIfPresent(key);
-        if (cacheEntry == null)
+        if (cacheEntry == null) {
             System.out.println("Key " + key + " not in cache");
-        else
+        }
+        else {
             cacheEntry.print();
+        }
     }
 
     public void print() {
@@ -206,10 +212,12 @@ public class SameProcessCache<K, V> implements Cache<K, V> {
         for (Map.Entry<K, CacheEntry<V>> entry : cacheMap.entrySet()) {
             System.out.println("Key: " + entry.getKey());
             CacheEntry<V> cacheEntry = entry.getValue();
-            if (cacheEntry == null)
+            if (cacheEntry == null) {
                 System.out.println("CacheEntry is null");
-            else
+            }
+            else {
                 cacheEntry.print();
+            }
             System.out.println();
         }
         System.out.println("Cache size is: " + size());

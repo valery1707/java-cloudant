@@ -11,7 +11,8 @@ import java.io.Serializable;
  * 
  */
 public class CacheEntry<V> implements Serializable {
-    private static final long serialVersionUID = 75;
+
+    private static final long serialVersionUID = 1L;
     private V value;
     private long expirationTime;
 

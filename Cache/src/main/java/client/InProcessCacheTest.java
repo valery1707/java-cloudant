@@ -3,12 +3,8 @@
  */
 package client;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -19,43 +15,16 @@ import java.util.Map;
  * @author ArunIyengar
  * 
  */
-public class SameProcessCacheTest {
+public class InProcessCacheTest {
 
     int numObjects = 2000;
-    SameProcessCache<String, Integer> spc = new SameProcessCache<String, Integer>(
+    InProcessCache<String, Integer> spc = new InProcessCache<String, Integer>(
             numObjects);
     String key1 = "key1";
     String key2 = "key2";
     String key3 = "key3";
     long lifetime = 3000;
 
-    /**
-     * @throws java.lang.Exception
-     */
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-    }
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-    }
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @Before
-    public void setUp() throws Exception {
-    }
-
-    /**
-     * @throws java.lang.Exception
-     */
-    @After
-    public void tearDown() throws Exception {
-    }
 
     @Test
     public void testPutGetGetStatistics() {
@@ -65,7 +34,7 @@ public class SameProcessCacheTest {
         spc.put(key2, 43, lifetime);
         spc.put(key3, 44, lifetime);
         spc.print();
-        CacheStats1 stats1 = spc.getStatistics();
+        InProcessCacheStats stats1 = spc.getStatistics();
         assertEquals("Cache size should be 3", 3, spc.size());
         assertEquals("Hit rate should be 1.0", 1.0,
                 stats1.getStats().hitRate(), .0001);

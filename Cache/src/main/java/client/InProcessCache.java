@@ -147,6 +147,46 @@ public class InProcessCache<K, V> implements Cache<K, V> {
     }
 
     /**
+     * Print contents of entire cache
+     * 
+     * */
+    public void print() {
+        Map<K, CacheEntry<V>> cacheMap = cache.asMap();
+        System.out.println("\nContents of Entire Cache\n");
+        for (Map.Entry<K, CacheEntry<V>> entry : cacheMap.entrySet()) {
+            System.out.println("Key: " + entry.getKey());
+            CacheEntry<V> cacheEntry = entry.getValue();
+            if (cacheEntry == null) {
+                System.out.println("CacheEntry is null");
+            }
+            else {
+                cacheEntry.print();
+            }
+            System.out.println();
+        }
+        System.out.println("Cache size is: " + size());
+    }
+
+    /**
+     * Print a CacheEntry corresponding to a key.
+     * 
+     * @param key
+     *            key corresponding to value
+     * 
+     * */ 
+    public void printCacheEntry(K key) {
+        System.out.println("printCacheEntry: CacheEntry value for key: " + key);
+        CacheEntry<V> cacheEntry = cache.getIfPresent(key);
+        if (cacheEntry == null) {
+            System.out.println("Key " + key + " not in cache");
+        }
+        else {
+            cacheEntry.print();
+        }
+    }
+
+    
+    /**
      * cache a key-value pair
      * 
      * @param key
@@ -195,32 +235,5 @@ public class InProcessCache<K, V> implements Cache<K, V> {
         return cache.size();
     }
 
-    void lookup(K key) {
-        System.out.println("lookup: CacheEntry value for key: " + key);
-        CacheEntry<V> cacheEntry = cache.getIfPresent(key);
-        if (cacheEntry == null) {
-            System.out.println("Key " + key + " not in cache");
-        }
-        else {
-            cacheEntry.print();
-        }
-    }
-
-    public void print() {
-        Map<K, CacheEntry<V>> cacheMap = cache.asMap();
-        System.out.println("\nContents of Entire Cache\n");
-        for (Map.Entry<K, CacheEntry<V>> entry : cacheMap.entrySet()) {
-            System.out.println("Key: " + entry.getKey());
-            CacheEntry<V> cacheEntry = entry.getValue();
-            if (cacheEntry == null) {
-                System.out.println("CacheEntry is null");
-            }
-            else {
-                cacheEntry.print();
-            }
-            System.out.println();
-        }
-        System.out.println("Cache size is: " + size());
-    }
 
 }

@@ -1,7 +1,7 @@
 /**
  * 
  */
-package client;
+package tests;
 
 import static org.junit.Assert.assertEquals;
 
@@ -13,6 +13,12 @@ import java.util.Map;
 import javax.crypto.SealedObject;
 
 import org.junit.Test;
+
+import client.Encryption;
+import client.RedisCache;
+import client.Serializer;
+import client.Util;
+import client.Encryption.Key;
 
 /**
  * @author ArunIyengar
@@ -33,8 +39,8 @@ public class RedisCacheTest {
     public void testPutGet() {
         opc.clear();
         opc.put(key1, 42, lifetime);
-        opc.lookup(key1);
-        opc.lookup(key2);
+        opc.printCacheEntry(key1);
+        opc.printCacheEntry(key2);
         opc.put(key2, 43, lifetime);
         opc.put(key3, 44, lifetime);
         opc.print();

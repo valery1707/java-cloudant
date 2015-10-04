@@ -3,6 +3,7 @@
  */
 package client;
 
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -224,6 +225,18 @@ public class RedisCache<K, V> implements Cache<K, V> {
         System.out.println("Cache size is: " + size());
     }
 
+    public void printCacheEntry(K key) {
+        System.out.println("lookup: CacheEntry value for key: " + key);
+        CacheEntry<V> cacheEntry = getCacheEntry(key);
+        if (cacheEntry == null) {
+            System.out.println("Key " + key + " not in cache");
+        }
+        else {
+            cacheEntry.print();
+        }
+    }
+
+    
     /**
      * cache a key-value pair
      * 
@@ -289,15 +302,5 @@ public class RedisCache<K, V> implements Cache<K, V> {
         return cache.dbSize();
     }
 
-    void lookup(K key) {
-        System.out.println("lookup: CacheEntry value for key: " + key);
-        CacheEntry<V> cacheEntry = getCacheEntry(key);
-        if (cacheEntry == null) {
-            System.out.println("Key " + key + " not in cache");
-        }
-        else {
-            cacheEntry.print();
-        }
-    }
 
 }

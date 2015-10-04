@@ -1,11 +1,15 @@
 /**
  * 
  */
-package client;
+package tests;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+
+import client.CacheEntry;
+import client.InProcessCache;
+import client.InProcessCacheStats;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,11 +30,13 @@ public class InProcessCacheTest {
     long lifetime = 3000;
 
 
+
+    
     @Test
     public void testPutGetGetStatistics() {
         spc.put(key1, 42, lifetime);
-        spc.lookup(key1);
-        spc.lookup(key2);
+        spc.printCacheEntry(key1);
+        spc.printCacheEntry(key2);
         spc.put(key2, 43, lifetime);
         spc.put(key3, 44, lifetime);
         spc.print();

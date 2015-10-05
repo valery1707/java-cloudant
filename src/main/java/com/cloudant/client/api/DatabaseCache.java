@@ -204,8 +204,7 @@ public class DatabaseCache {
      * @throws NoDocumentException
      *             If the document is not found in the database.
      */
-    public <T> T find(Class<T> classType, String id, long lifetime,
-            Params params) {
+    public <T> T find(Class<T> classType, String id,  Params params, long lifetime) {
         assertNotEmpty(params, "params");
         T value = classType.cast(cache.get(id));
         if (value != null) {

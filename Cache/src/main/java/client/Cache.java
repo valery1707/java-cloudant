@@ -4,8 +4,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @author ArunIyengar Class containing statistics for cache
+ * @author ArunIyengar 
  * 
+ */
+
+/*
+ * Interface for cache
  */
 public interface Cache<K, V> {
 
@@ -97,7 +101,10 @@ public interface Cache<K, V> {
      * @param value
      *            value associated with each key-value pair
      * @param lifetime
-     *            lifetime in milliseconds associated with each key-value pair
+     *            lifetime in milliseconds associated with each key-value pair.
+     *            If the system supports revalidation of expired cache entries to determine if
+     *            expired entries are really obsolete, a value <= 0 indicates cached entry should
+     *            always be revalidated before being returned to client
      * 
      * */
     public void putAll(Map<K, V> map, long lifetime);

@@ -15,8 +15,11 @@ import java.util.zip.GZIPOutputStream;
 
 
 /**
- * @author ArunIyengar Utility methods called by several other classes
+ * @author ArunIyengar 
  * 
+ */
+/*
+ * Utility methods called by several other classes
  */
 public class Util {
 

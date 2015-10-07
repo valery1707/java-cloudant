@@ -6,9 +6,12 @@ package client;
 import java.io.Serializable;
 
 /**
- * @author ArunIyengar This class represents what is actually stored in the
- *         cache.
+ * @author ArunIyengar 
  * 
+ */
+
+/*
+ * This class represents what is actually stored in the cache.
  */
 public class CacheEntry<V> implements Serializable {
 
@@ -29,10 +32,12 @@ public class CacheEntry<V> implements Serializable {
         return expirationTime;
     }
 
+    public String toString() {
+        return ("CacheEntry value: " + value + 
+                "\nCacheEntry expiration time: " + expirationTime +
+                "\nMilliseconds until expiration: " + (expirationTime - Util.getTime()));
+    }
     public void print() {
-        System.out.println("CacheEntry value: " + value);
-        System.out.println("CacheEntry expiration time: " + expirationTime);
-        System.out.println("Milliseconds until expiration: "
-                + (expirationTime - Util.getTime()));
+        System.out.println(toString());
     }
 }

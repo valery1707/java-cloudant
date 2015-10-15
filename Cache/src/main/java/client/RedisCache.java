@@ -17,36 +17,44 @@ import redis.clients.jedis.Jedis;
  * @author ArunIyengar
  * 
  */
-public class RedisCache<K, V> implements Cache<K, V> {
+public class RedisCache<K, V> implements CacheWithLifetimes<K, V> {
 
     private Jedis cache;
+    private long defaultLifetime;  // default object lifetime in millisecods
+
 
     /**
-     * Constructor
+     * Constructor creating Jedis instance
      * 
      * @param host
      *            post where Redis is running
+     * @param defaultLifespan
+     *            Default life time in milliseconds for cached objects
      * 
      * */
-    public RedisCache(String host) {
+    public RedisCache(String host, long defaultLifespan) {
         cache = new Jedis(host);
+        defaultLifetime = defaultLifespan;
     }
 
     /**
-     * Constructor
+     * Constructor creating Jedis instance
      * 
      * @param host
      *            post where Redis is running
      * @param port
      *            port number
+     * @param defaultLifespan
+     *            Default life time in milliseconds for cached objects
      * 
      * */
-    public RedisCache(String host, int port) {
+    public RedisCache(String host, int port, long defaultLifespan) {
         cache = new Jedis(host, port);
+        defaultLifetime = defaultLifespan;
     }
 
     /**
-     * Constructor
+     * Constructor creating Jedis instance
      * 
      * @param host
      *            post where Redis is running
@@ -54,12 +62,32 @@ public class RedisCache<K, V> implements Cache<K, V> {
      *            port number
      * @param timeout
      *            number of seconds before Jedis closes an idle connection
+     * @param defaultLifespan
+     *            Default life time in milliseconds for cached objects
      * 
      * */
-    public RedisCache(String host, int port, int timeout) {
+    public RedisCache(String host, int port, int timeout, long defaultLifespan) {
         cache = new Jedis(host, port, timeout);
+        defaultLifetime = defaultLifespan;
     }
 
+    /**
+     * Constructor in which already-created Jedis instance is passed in to be used as underlying
+     * cache.  This constructor is for situations in which application wants access to 
+     * Jedis instance so that it can directly make Jedis method calls on the Jedis instance.
+     * 
+     * @param jedisCache
+     *            Existing Jedis instance to be used as underlying cache
+     * @param defaultLifespan
+     *            Default life time in milliseconds for cached objects
+     * 
+     * */
+    public RedisCache(Jedis jedisCache, long defaultLifespan) {
+        cache = jedisCache;
+        defaultLifetime = defaultLifespan;
+    }
+
+    
     /**
      * delete all key-value pairs from the current database
      * 
@@ -172,19 +200,7 @@ public class RedisCache<K, V> implements Cache<K, V> {
         }
         return Serializer.deserializeFromByteArray(rawValue);
     }
-
     
-    /**
-     * Return Jedis data structure so users can make direct API calls to
-     * it
-     * 
-     * @return Jedis data structure corresponding to underlying cache
-     * 
-     * */
-    public Jedis getJedis() {
-        return cache;
-    }
-
     /**
      * get cache statistics.  For Redis, cache statistics are contained in a string.  The string is
      * returned by RedisCacheStats.getStats()
@@ -196,46 +212,41 @@ public class RedisCache<K, V> implements Cache<K, V> {
     public RedisCacheStats getStatistics() {
         return new RedisCacheStats(cache.info());
     }
-
+    
     /**
-     * Output contents of current database
-     * */
-    public void print() {
-        System.out.println("\nContents of Entire Cache\n");
-        StringRedisSerializer srs = new StringRedisSerializer();
-        // If we know that keys are strings, we don't have to use
-        // StringRedisSerializer
-        Set<byte[]> keys = cache.keys(srs.serialize("*"));
-        for (byte[] key : keys) {
-            String keyString = Serializer.deserializeFromByteArray(key);
-            System.out.println("Key: " + keyString);
-            byte[] rawValue = cache.get(key);
-            if (rawValue == null) {
-                System.out.println("No value found in cache for keyString " + keyString + "\n");
-                continue;
-            }
-            CacheEntry<V> cacheEntry = Serializer.deserializeFromByteArray(rawValue);
-            if (cacheEntry == null) {
-                System.out.println("CacheEntry is null for keyString " + keyString + "\n");
-                continue;
-            }
-            cacheEntry.print();
-            System.out.println();
-        }
-        System.out.println("Cache size is: " + size());
-    }
-
-    public void printCacheEntry(K key) {
-        System.out.println("lookup: CacheEntry value for key: " + key);
+     * Return string representing a cache entry corresponding to a key (or indicate if the
+     * key is not in the cache). 
+     * 
+     * @param key
+     *            key corresponding to value
+     * @return string containing output
+     * 
+     * */ 
+    public String printCacheEntry(K key) {
+        String result = "lookup: CacheEntry value for key: " + key + "\n";
         CacheEntry<V> cacheEntry = getCacheEntry(key);
         if (cacheEntry == null) {
-            System.out.println("Key " + key + " not in cache");
+            result+= "Key " + key + " not in cache" + "\n";
         }
         else {
-            cacheEntry.print();
+            result += cacheEntry.toString();
         }
+        return result;
     }
-
+    
+    /**
+     * cache a key-value pair
+     * 
+     * @param key
+     *            key associated with value
+     * @param value
+     *            value associated with key
+     * 
+     * */
+    @Override
+    public void put(K key, V value) {
+        put (key, value, defaultLifetime);
+    }
     
     /**
      * cache a key-value pair
@@ -274,6 +285,22 @@ public class RedisCache<K, V> implements Cache<K, V> {
      * 
      * */
     @Override
+    public void putAll(Map<K, V> map) {
+        putAll (map, defaultLifetime);
+    }
+    
+    /**
+     * cache one or more key-value pairs
+     * 
+     * @param map
+     *            map containing key-value pairs to cache
+     * @param value
+     *            value associated with each key-value pair
+     * @param lifetime
+     *            lifetime in milliseconds associated with each key-value pair
+     * 
+     * */
+    @Override
     public void putAll(Map<K, V> map, long lifetime) {
         long expirationTime = Util.getTime() + lifetime;
         for (Map.Entry<K, V> entry : map.entrySet()) {
@@ -282,15 +309,6 @@ public class RedisCache<K, V> implements Cache<K, V> {
             put(entry.getKey(), cacheEntry);
         }
 
-    }
-
-
-    /**
-     * Select the DB having the specified zero-based numeric index.
-     * 
-     * */
-    public String select(int index) {
-        return cache.select(index);
     }
 
     /**
@@ -302,5 +320,35 @@ public class RedisCache<K, V> implements Cache<K, V> {
         return cache.dbSize();
     }
 
+    /**
+     * Output contents of current database to a string.
+     * 
+     * @return string containing output
+     * 
+     * */
+    public String toString() {
+        String result = "\nContents of Entire Cache\n\n";
+        StringRedisSerializer srs = new StringRedisSerializer();
+        // If we know that keys are strings, we don't have to use
+        // StringRedisSerializer
+        Set<byte[]> keys = cache.keys(srs.serialize("*"));
+        for (byte[] key : keys) {
+            String keyString = Serializer.deserializeFromByteArray(key);
+            result += "Key: " + keyString + "\n";
+            byte[] rawValue = cache.get(key);
+            if (rawValue == null) {
+                result += "No value found in cache for keyString " + keyString + "\n\n";
+                continue;
+            }
+            CacheEntry<V> cacheEntry = Serializer.deserializeFromByteArray(rawValue);
+            if (cacheEntry == null) {
+                result += "CacheEntry is null for keyString " + keyString + "\n\n";
+                continue;
+            }
+            result += cacheEntry.toString() + "\n\n";
+        }
+        result += "Cache size is: " + size() + "\n";
+        return result;
+    }
 
 }

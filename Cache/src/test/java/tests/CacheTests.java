@@ -4,12 +4,12 @@
 package tests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
-import org.junit.Test;
-
-import client.CacheEntry;
-import client.InProcessCache;
+import client.CacheWithLifetimes;
 import client.InProcessCacheStats;
+import client.Stats;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,59 +19,44 @@ import java.util.Map;
  * @author ArunIyengar
  * 
  */
-public class InProcessCacheTest {
+public class CacheTests {
 
-    int numObjects = 2000;
-    InProcessCache<String, Integer> spc = new InProcessCache<String, Integer>(
-            numObjects);
     String key1 = "key1";
     String key2 = "key2";
     String key3 = "key3";
     long lifetime = 3000;
 
-
-
-    
-    @Test
-    public void testPutGetGetStatistics() {
+    void testPutGetGetStatistics(CacheWithLifetimes<String, Integer> spc, boolean inProcess) {
+        spc.clear();
         spc.put(key1, 42, lifetime);
-        spc.printCacheEntry(key1);
-        spc.printCacheEntry(key2);
         spc.put(key2, 43, lifetime);
         spc.put(key3, 44, lifetime);
-        spc.print();
-        InProcessCacheStats stats1 = spc.getStatistics();
+        Stats stats1 = spc.getStatistics();
         assertEquals("Cache size should be 3", 3, spc.size());
-        assertEquals("Hit rate should be 1.0", 1.0,
-                stats1.getStats().hitRate(), .0001);
-        System.out.println("Cache size: " + spc.size());
-        System.out.println("Hit rate: " + stats1.getStats().hitRate());
+        if (inProcess) {
+            assertEquals("Hit rate should be 1.0", 1.0,
+                    ((InProcessCacheStats) stats1).getStats().hitRate(), .0001);
+        }
     }
 
-    @Test
-    public void testClear() {
+    public void testClear(CacheWithLifetimes<String, Integer> spc) {
+        spc.clear();
         spc.put(key1, 42, lifetime);
         spc.put(key2, 43, lifetime);
         spc.put(key3, 44, lifetime);
         assertEquals("Cache size should be 3", 3, spc.size());
-        System.out.println("Cache size: " + spc.size());
-        spc.print();
         spc.clear();
         assertEquals("Cache size should be 0", 0, spc.size());
-        System.out.println("Cache size: " + spc.size());
-        spc.print();
     }
 
-    @Test
-    public void testDelete() {
+    public void testDelete(CacheWithLifetimes<String, Integer> spc) {
+        spc.clear();
         spc.put(key1, 42, lifetime);
         spc.put(key2, 43, lifetime);
         spc.put(key3, 44, lifetime);
         assertEquals("Cache size should be 3", 3, spc.size());
-        spc.print();
         spc.delete(key2);
         assertEquals("Cache size should be 2", 2, spc.size());
-        spc.print();
         spc.put(key2, 50, lifetime);
         spc.put("key4", 59, lifetime);
         spc.put("key5", 80, lifetime);
@@ -83,30 +68,20 @@ public class InProcessCacheTest {
         assertEquals("Cache size should be 3", 3, spc.size());
         spc.delete("adjkfjadfjdf");
         spc.delete("adfkasdklfjil");
-        spc.print();
+        assertEquals("Cache size should be 3", 3, spc.size());
     }
 
-    @Test
-    public void testPutAll() {
+    public void testPutAll(CacheWithLifetimes<String, Integer> spc) {
         HashMap<String, Integer> map = new HashMap<String, Integer>();
         map.put(key1, 42);
         map.put(key2, 43);
         map.put(key3, 44);
+        spc.clear();
         spc.putAll(map, lifetime);
-        spc.print();
         assertEquals("Cache size should be 3", 3, spc.size());
     }
 
-    static <K, V> void printMap(Map<K, V> map) {
-        System.out.println("printMap: outputting map contents ");
-        for (Map.Entry<K, V> entry : map.entrySet()) {
-            System.out.println("Key: " + entry.getKey() + " Value: "
-                    + entry.getValue());
-        }
-    }
-
-    @Test
-    public void testGetAll() {
+    public void testGetAll(CacheWithLifetimes<String, Integer> spc) {
         spc.put(key1, 42, lifetime);
         spc.put(key2, 43, lifetime);
         spc.put(key3, 44, lifetime);
@@ -115,19 +90,40 @@ public class InProcessCacheTest {
         list.add(key2);
         list.add(key3);
         Map<String, Integer> map = spc.getAll(list);
-        printMap(map);
         assertEquals("Returned map size should be 3", 3, map.size());
     }
 
-    @Test
-    public void testUpdate() {
+    public void testUpdate(CacheWithLifetimes<String, Integer> spc) {
+        Integer val1;
+
         spc.put(key1, 42, lifetime);
-        spc.print();
+        val1 = spc.get(key1);
+        assertEquals("Val1 should be 42, actual value is " + val1, 42, val1.intValue());
         spc.put(key1, 43, lifetime);
-        spc.print();
+        val1 = spc.get(key1);
+        assertEquals("Val1 should be 43, actual value is " + val1, 43, val1.intValue());
         spc.put(key1, 44, lifetime);
-        spc.print();
-        assertEquals("Cache size should be 1", 1, spc.size());
+        val1 = spc.get(key1);
+        assertEquals("Val1 should be 44, actual value is " + val1, 44, val1.intValue());
+    }
+ 
+    public void testExpiration(CacheWithLifetimes<String, Integer> spc) {
+        long lifespan = 1000;
+        Integer val1;
+
+        spc.clear();
+        val1 = spc.get(key1);
+        assertNull("Val1 should be null, value is " + val1, val1);
+        spc.put(key1, 42, lifespan);
+        val1 = spc.get(key1);
+        assertNotNull("Val1 should not be null, value is " + val1, val1);
+        try {
+            Thread.sleep(lifespan + 200);
+        }
+        catch (Exception e) {
+        } 
+        val1 = spc.get(key1);
+        assertNull("Val1 should be null, value is " + val1, val1);
     }
     
 }

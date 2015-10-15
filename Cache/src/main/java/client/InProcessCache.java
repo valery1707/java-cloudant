@@ -19,9 +19,10 @@ import com.google.common.cache.LoadingCache;
 /*
  * This cache implementation stores data in the same process as the executing program
  */
-public class InProcessCache<K, V> implements Cache<K, V> {
+public class InProcessCache<K, V> implements CacheWithLifetimes<K, V> {
 
     private LoadingCache<K, CacheEntry<V>> cache;
+    private long defaultLifetime;  // default object lifetime in millisecods
 
     /**
      * Constructor
@@ -29,15 +30,18 @@ public class InProcessCache<K, V> implements Cache<K, V> {
      * @param maxObjects
      *            maximum number of objects which can be stored before
      *            replacement starts
+     * @param defaultLifespan
+     *            Default life time in milliseconds for cached objects
      * 
      * */
-    public InProcessCache(long maxObjects) {
+    public InProcessCache(long maxObjects, long defaultLifespan) {
         cache = CacheBuilder.newBuilder().maximumSize(maxObjects)
                 .build(new CacheLoader<K, CacheEntry<V>>() {
                     public CacheEntry<V> load(K key) throws Exception {
                         return null;
                     }
                 });
+        defaultLifetime = defaultLifespan;
 
     }
 
@@ -146,45 +150,41 @@ public class InProcessCache<K, V> implements Cache<K, V> {
         return new InProcessCacheStats(cache.stats());
     }
 
-    /**
-     * Print contents of entire cache
-     * 
-     * */
-    public void print() {
-        Map<K, CacheEntry<V>> cacheMap = cache.asMap();
-        System.out.println("\nContents of Entire Cache\n");
-        for (Map.Entry<K, CacheEntry<V>> entry : cacheMap.entrySet()) {
-            System.out.println("Key: " + entry.getKey());
-            CacheEntry<V> cacheEntry = entry.getValue();
-            if (cacheEntry == null) {
-                System.out.println("CacheEntry is null");
-            }
-            else {
-                cacheEntry.print();
-            }
-            System.out.println();
-        }
-        System.out.println("Cache size is: " + size());
-    }
 
     /**
-     * Print a CacheEntry corresponding to a key.
+     * Return string representing a cache entry corresponding to a key (or indicate if the
+     * key is not in the cache). 
      * 
      * @param key
      *            key corresponding to value
+     * @return string containing output
      * 
      * */ 
-    public void printCacheEntry(K key) {
-        System.out.println("printCacheEntry: CacheEntry value for key: " + key);
+    public String printCacheEntry(K key) {
+        String result = "printCacheEntry: CacheEntry value for key: " + key + "\n";
         CacheEntry<V> cacheEntry = cache.getIfPresent(key);
         if (cacheEntry == null) {
-            System.out.println("Key " + key + " not in cache");
+            result = result + "Key " + key + " not in cache\n";
         }
         else {
-            cacheEntry.print();
+            result = result + cacheEntry.toString();
         }
+        return result;
     }
 
+    /**
+     * cache a key-value pair
+     * 
+     * @param key
+     *            key associated with value
+     * @param value
+     *            value associated with key
+     * 
+     * */
+    @Override
+    public void put(K key, V value) {
+        put (key, value, defaultLifetime);
+    }
     
     /**
      * cache a key-value pair
@@ -216,6 +216,22 @@ public class InProcessCache<K, V> implements Cache<K, V> {
      * 
      * */
     @Override
+    public void putAll(Map<K, V> map) {
+        putAll (map, defaultLifetime);
+    }
+    
+    /**
+     * cache one or more key-value pairs
+     * 
+     * @param map
+     *            map containing key-value pairs to cache
+     * @param value
+     *            value associated with each key-value pair
+     * @param lifetime
+     *            lifetime in milliseconds associated with each key-value pair
+     * 
+     * */
+    @Override
     public void putAll(Map<K, V> map, long lifetime) {
         long expirationTime = Util.getTime() + lifetime;
         for (Map.Entry<K, V> entry : map.entrySet()) {
@@ -235,5 +251,28 @@ public class InProcessCache<K, V> implements Cache<K, V> {
         return cache.size();
     }
 
+    /**
+     * Return contents of entire cache in a string
+     * 
+     * @return string containing output
+     * 
+     * */
+    public String toString() {
+        Map<K, CacheEntry<V>> cacheMap = cache.asMap();
+        String result = "\nContents of Entire Cache\n\n";
+        for (Map.Entry<K, CacheEntry<V>> entry : cacheMap.entrySet()) {
+            result = result + "Key: " + entry.getKey() + "\n";
+            CacheEntry<V> cacheEntry = entry.getValue();
+            if (cacheEntry == null) {
+                result = result + "CacheEntry is null\n";
+            }
+            else {
+                result = result + cacheEntry.toString();
+            }
+            result = result + "\n\n";
+        }
+        result = result + "Cache size is: " + size() + "\n";
+        return result;
+    }
 
 }

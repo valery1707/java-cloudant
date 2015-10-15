@@ -8,7 +8,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.Date;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -111,7 +110,8 @@ public class Util {
      * 
      * */
       public static long getTime() {
-        return (new Date()).getTime();
+          return System.currentTimeMillis();
+        // return (new Date()).getTime();
         //java.util.Date.getTime() method returns how many milliseconds have passed since 
         //January 1, 1970, 00:00:00 GMT
     }

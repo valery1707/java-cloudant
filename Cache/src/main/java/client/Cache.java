@@ -87,11 +87,9 @@ public interface Cache<K, V> {
      *            key associated with value
      * @param value
      *            value associated with key
-     * @param lifetime
-     *            lifetime in milliseconds associated with data
      * 
      * */
-    public void put(K key, V value, long lifetime);
+    public void put(K key, V value);
 
     /**
      * cache one or more key-value pairs
@@ -100,14 +98,9 @@ public interface Cache<K, V> {
      *            map containing key-value pairs to cache
      * @param value
      *            value associated with each key-value pair
-     * @param lifetime
-     *            lifetime in milliseconds associated with each key-value pair.
-     *            If the system supports revalidation of expired cache entries to determine if
-     *            expired entries are really obsolete, a value <= 0 indicates cached entry should
-     *            always be revalidated before being returned to client
      * 
      * */
-    public void putAll(Map<K, V> map, long lifetime);
+    public void putAll(Map<K, V> map);
 
     /**
      * Return number of objects in cache

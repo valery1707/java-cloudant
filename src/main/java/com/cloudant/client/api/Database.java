@@ -23,6 +23,7 @@ import com.cloudant.client.api.model.Permissions;
 import com.cloudant.client.api.model.Shard;
 import com.cloudant.client.api.views.AllDocsRequestBuilder;
 import com.cloudant.client.api.views.ViewRequestBuilder;
+import com.cloudant.client.internal.cache.CacheHint;
 import com.cloudant.client.org.lightcouch.DocumentConflictException;
 import com.cloudant.client.org.lightcouch.NoDocumentException;
 import com.cloudant.client.org.lightcouch.Response;
@@ -292,6 +293,7 @@ public interface Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
+    @CacheHint(value = CacheHint.Operation.GET, index = 1)
     <T> T find(Class<T> classType, String id);
 
     /**
@@ -316,6 +318,7 @@ public interface Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
+    @CacheHint(value = CacheHint.Operation.GET, index = 1)
     <T> T find(Class<T> classType, String id, Params params);
 
     /**
@@ -337,6 +340,7 @@ public interface Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
+    @CacheHint(value = CacheHint.Operation.GET, index = 1)
     <T> T find(Class<T> classType, String id, String rev);
 
     /**
@@ -447,6 +451,7 @@ public interface Database {
      * @return {@link Response}
      * @throws DocumentConflictException If a conflict is detected during the save.
      */
+    @CacheHint(CacheHint.Operation.PUT)
     com.cloudant.client.api.model.Response save(Object object);
 
     /**
@@ -462,6 +467,7 @@ public interface Database {
      * href="https://docs.cloudant.com/document.html#quorum---writing-and-reading-data">
      * Documents - quorum</a>
      */
+    @CacheHint(CacheHint.Operation.PUT)
     com.cloudant.client.api.model.Response save(Object object, int writeQuorum);
 
     /**
@@ -483,6 +489,7 @@ public interface Database {
      * @see <a target="_blank"
      * href="https://docs.cloudant.com/document.html#documentCreate">Documents - create</a>
      */
+    @CacheHint(CacheHint.Operation.PUT)
     com.cloudant.client.api.model.Response post(Object object);
 
     /**
@@ -497,6 +504,7 @@ public interface Database {
      * href="https://docs.cloudant.com/document.html#quorum---writing-and-reading-data">
      * Documents - quorum</a>
      */
+    @CacheHint(CacheHint.Operation.PUT)
     com.cloudant.client.api.model.Response post(Object object, int writeQuorum);
 
     /**
@@ -520,6 +528,7 @@ public interface Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#update">Documents -
      * update</a>
      */
+    @CacheHint(CacheHint.Operation.PUT)
     com.cloudant.client.api.model.Response update(Object object);
 
     /**
@@ -535,6 +544,7 @@ public interface Database {
      * href="https://docs.cloudant.com/document.html#quorum---writing-and-reading-data">
      * Documents - quorum</a>
      */
+    @CacheHint(CacheHint.Operation.PUT)
     com.cloudant.client.api.model.Response update(Object object, int writeQuorum);
 
     /**
@@ -556,6 +566,7 @@ public interface Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#delete">Documents -
      * delete</a>
      */
+    @CacheHint(CacheHint.Operation.DELETE)
     com.cloudant.client.api.model.Response remove(Object object);
 
     /**

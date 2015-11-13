@@ -14,89 +14,32 @@
 
 package com.cloudant.client.api;
 
-import static com.cloudant.client.org.lightcouch.internal.CouchDbUtil.assertNotEmpty;
-import static com.cloudant.client.org.lightcouch.internal.CouchDbUtil.close;
-import static com.cloudant.client.org.lightcouch.internal.CouchDbUtil.createPost;
-import static com.cloudant.client.org.lightcouch.internal.CouchDbUtil.getAsString;
-import static com.cloudant.client.org.lightcouch.internal.CouchDbUtil.getResponse;
-import static com.cloudant.client.org.lightcouch.internal.CouchDbUtil.getResponseList;
-import static com.cloudant.client.org.lightcouch.internal.URIBuilder.buildUri;
-
 import com.cloudant.client.api.model.DbInfo;
 import com.cloudant.client.api.model.FindByIndexOptions;
 import com.cloudant.client.api.model.Index;
 import com.cloudant.client.api.model.IndexField;
-import com.cloudant.client.api.model.IndexField.SortOrder;
 import com.cloudant.client.api.model.Params;
 import com.cloudant.client.api.model.Permissions;
 import com.cloudant.client.api.model.Shard;
 import com.cloudant.client.api.views.AllDocsRequestBuilder;
 import com.cloudant.client.api.views.ViewRequestBuilder;
-import com.cloudant.client.internal.views.AllDocsRequestBuilderImpl;
-import com.cloudant.client.internal.views.AllDocsRequestResponse;
-import com.cloudant.client.internal.views.ViewQueryParameters;
-import com.cloudant.client.org.lightcouch.Changes;
-import com.cloudant.client.org.lightcouch.CouchDatabase;
-import com.cloudant.client.org.lightcouch.CouchDbException;
 import com.cloudant.client.org.lightcouch.DocumentConflictException;
 import com.cloudant.client.org.lightcouch.NoDocumentException;
 import com.cloudant.client.org.lightcouch.Response;
-import com.cloudant.client.org.lightcouch.internal.URIBuilder;
-import com.cloudant.http.Http;
-import com.cloudant.http.HttpConnection;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.reflect.TypeToken;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Type;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.logging.Logger;
-
 
 /**
- * Contains a Database Public API implementation.
- *
+ * The Database API.
+ * <P>
  * Methods may throw a {@link NoDocumentException} if the database does not exist.
- *
- * @author Mario Briggs
- * @since 0.0.1
+ * </P>
  */
-public class Database {
-
-    static final Logger log = Logger.getLogger(Database.class.getCanonicalName());
-    private CouchDatabase db;
-    private CloudantClient client;
-    private final URI apiV2DBSecurityURI;
-
-    /**
-     * @param client
-     * @param db
-     */
-    Database(CloudantClient client, CouchDatabase db) {
-        super();
-        this.client = client;
-        this.db = db;
-        apiV2DBSecurityURI = buildUri(client.getBaseUri()).path("_api/v2/db/").path(db.getDbName
-                ()).path("/_security").build();
-    }
+public interface Database {
 
     /**
      * Set permissions for a user/apiKey on this database.
@@ -131,62 +74,7 @@ public class Database {
      * href="http://docs.cloudant.com/authorization.html#modifying-permissions">Modifying
      * permissions</a>
      */
-    public void setPermissions(String userNameorApikey, EnumSet<Permissions> permissions) {
-        assertNotEmpty(userNameorApikey, "userNameorApikey");
-        assertNotEmpty(permissions, "permissions");
-        final JsonArray jsonPermissions = new JsonArray();
-        for (Permissions s : permissions) {
-            final JsonPrimitive permission = new JsonPrimitive(s.toString());
-            jsonPermissions.add(permission);
-        }
-
-        // get existing permissions
-        JsonObject perms = getPermissionsObject();
-
-        // now set back
-        JsonElement elem = perms.get("cloudant");
-        if (elem == null) {
-            perms.addProperty("_id", "_security");
-            elem = new JsonObject();
-            perms.add("cloudant", elem);
-        }
-        elem.getAsJsonObject().add(userNameorApikey, jsonPermissions);
-
-        InputStream response = null;
-        HttpConnection put = Http.PUT(apiV2DBSecurityURI, "application/json");
-        put.setRequestBody(client.getGson().toJson(perms));
-        try {
-            response = client.couchDbClient.executeToInputStream(put);
-            String ok = getAsString(response, "ok");
-            if (!ok.equalsIgnoreCase("true")) {
-                //raise exception
-            }
-        } finally {
-            close(response);
-        }
-    }
-
-    /**
-     * @return /api/v2/db/$dbname/_security JSON data
-     * @throws UnsupportedOperationException if called on a database that does not provide the
-     *                                       Cloudant authorization API
-     */
-    private JsonObject getPermissionsObject() {
-        try {
-            return client.couchDbClient.get(apiV2DBSecurityURI, JsonObject.class);
-        } catch (CouchDbException exception) {
-            //currently we can't inspect the HttpResponse code
-            //being in this catch block means it was not a 20x code
-            //look for the "bad request" that implies the endpoint is not supported
-            if (exception.getMessage().toLowerCase().contains("bad request")) {
-                throw new UnsupportedOperationException("The methods getPermissions and " +
-                        "setPermissions are not supported for this database, consider using the " +
-                        "/db/_security endpoint.");
-            } else {
-                throw exception;
-            }
-        }
-    }
+    void setPermissions(String userNameorApikey, EnumSet<Permissions> permissions);
 
     /**
      * Returns the Permissions of this database.
@@ -206,11 +94,7 @@ public class Database {
      * href="http://docs.cloudant.com/authorization.html#viewing-permissions">Viewing
      * permissions</a>
      */
-    public Map<String, EnumSet<Permissions>> getPermissions() {
-        JsonObject perms = getPermissionsObject();
-        return client.getGson().getAdapter(new TypeToken<Map<String, EnumSet<Permissions>>>() {
-        }).fromJsonTree(perms);
-    }
+    Map<String, EnumSet<Permissions>> getPermissions();
 
     /**
      * Get info about the shards in the database.
@@ -219,17 +103,7 @@ public class Database {
      * @see <a target="_blank"
      * href="https://docs.cloudant.com/advanced.html#get-/$db/_shards">_shards</a>
      */
-    public List<Shard> getShards() {
-        InputStream response = null;
-        try {
-            response = client.couchDbClient.get(buildUri(getDBUri()).path("_shards").build());
-            return getResponseList(response, client.getGson(),
-                    new TypeToken<List<Shard>>() {
-                    }.getType());
-        } finally {
-            close(response);
-        }
-    }
+    List<Shard> getShards();
 
     /**
      * Get info about the shard a document belongs to.
@@ -239,10 +113,7 @@ public class Database {
      * @see <a target="_blank"
      * href="https://docs.cloudant.com/advanced.html#get-/$db/_shards">_shards</a>
      */
-    public Shard getShard(String docId) {
-        assertNotEmpty(docId, "docId");
-        return client.couchDbClient.get(buildUri(getDBUri()).path("_shards/").path(docId).build(), Shard.class);
-    }
+    Shard getShard(String docId);
 
     /**
      * Create a new index
@@ -271,11 +142,8 @@ public class Database {
      * @param indexType     optional, type of index (only "json" as of now)
      * @param fields        array of fields in the index
      */
-    public void createIndex(String indexName, String designDocName, String indexType,
-                            IndexField[] fields) {
-        String indexDefn = getIndexDefinition(indexName, designDocName, indexType, fields);
-        createIndex(indexDefn);
-    }
+    void createIndex(String indexName, String designDocName, String indexType,
+                     IndexField[] fields);
 
     /**
      * Create a new index from a JSON string
@@ -286,23 +154,7 @@ public class Database {
      * href="http://docs.cloudant.com/api/cloudant-query.html#creating-a-new-index">
      * index definition</a>
      */
-    public void createIndex(String indexDefinition) {
-        assertNotEmpty(indexDefinition, "indexDefinition");
-        InputStream putresp = null;
-        URI uri = buildUri(getDBUri()).path("_index").build();
-        try {
-            putresp = client.couchDbClient.executeToInputStream(createPost(uri, indexDefinition,
-                    "application/json"));
-            String result = getAsString(putresp, "result");
-            if (result.equalsIgnoreCase("created")) {
-                log.info(String.format("Created Index: '%s'", indexDefinition));
-            } else {
-                log.warning(String.format("Index already exists : '%s'", indexDefinition));
-            }
-        } finally {
-            close(putresp);
-        }
-    }
+    void createIndex(String indexDefinition);
 
     /**
      * Find documents using an index
@@ -317,9 +169,7 @@ public class Database {
      * href="http://docs.cloudant.com/api/cloudant-query.html#cloudant-query-selectors">
      * selector syntax</a>
      */
-    public <T> List<T> findByIndex(String selectorJson, Class<T> classOfT) {
-        return findByIndex(selectorJson, classOfT, new FindByIndexOptions());
-    }
+    <T> List<T> findByIndex(String selectorJson, Class<T> classOfT);
 
     /**
      * Find documents using an index
@@ -349,35 +199,8 @@ public class Database {
      * href="http://docs.cloudant.com/api/cloudant-query.html#cloudant-query-selectors">
      * selector syntax</a>
      */
-    public <T> List<T> findByIndex(String selectorJson, Class<T> classOfT, FindByIndexOptions
-            options) {
-        assertNotEmpty(selectorJson, "selectorJson");
-        assertNotEmpty(options, "options");
-
-        URI uri = buildUri(getDBUri()).path("_find").build();
-        String body = getFindByIndexBody(selectorJson, options);
-        InputStream stream = null;
-        try {
-            stream = client.couchDbClient.executeToInputStream(createPost(uri, body,
-                    "application/json"));
-            Reader reader = new InputStreamReader(stream, "UTF-8");
-            JsonArray jsonArray = new JsonParser().parse(reader)
-                    .getAsJsonObject().getAsJsonArray("docs");
-            List<T> list = new ArrayList<T>();
-            for (JsonElement jsonElem : jsonArray) {
-                JsonElement elem = jsonElem.getAsJsonObject();
-                T t = client.getGson().fromJson(elem, classOfT);
-                list.add(t);
-            }
-            return list;
-        } catch (UnsupportedEncodingException e) {
-            // This should never happen as every implementation of the java platform is required
-            // to support UTF-8.
-            throw new RuntimeException(e);
-        } finally {
-            close(stream);
-        }
-    }
+    <T> List<T> findByIndex(String selectorJson, Class<T> classOfT, FindByIndexOptions
+            options);
 
     /**
      * List all indices
@@ -390,17 +213,7 @@ public class Database {
      *
      * @return List of Index objects
      */
-    public List<Index> listIndices() {
-        InputStream response = null;
-        try {
-            response = client.couchDbClient.get(buildUri(getDBUri()).path("_index/").build());
-            return getResponseList(response, client.getGson(),
-                    new TypeToken<List<Index>>() {
-                    }.getType());
-        } finally {
-            close(response);
-        }
-    }
+    List<Index> listIndices();
 
     /**
      * Delete an index
@@ -408,20 +221,7 @@ public class Database {
      * @param indexName   name of the index
      * @param designDocId ID of the design doc
      */
-    public void deleteIndex(String indexName, String designDocId) {
-        assertNotEmpty(indexName, "indexName");
-        assertNotEmpty(designDocId, "designDocId");
-        URI uri = buildUri(getDBUri()).path("_index/").path(designDocId).path("/json/").path
-                (indexName).build();
-        InputStream response = null;
-        try {
-            HttpConnection connection = Http.DELETE(uri);
-            response = client.couchDbClient.executeToInputStream(connection);
-            getResponse(response, Response.class, client.getGson());
-        } finally {
-            close(response);
-        }
-    }
+    void deleteIndex(String indexName, String designDocId);
 
     /**
      * Provides access to Cloudant <tt>Search</tt> APIs.
@@ -430,19 +230,15 @@ public class Database {
      * @return Search object for searching the index
      * @see <a target="_blank" href="https://docs.cloudant.com/search.html">Search</a>
      */
-    public Search search(String searchIndexId) {
-        return new Search(client, this, searchIndexId);
-    }
+    Search search(String searchIndexId);
 
     /**
      * Get a manager that has convenience methods for managing design documents.
-     * 
+     *
      * @return a {@link DesignDocumentManager} for this database
      * @see DesignDocumentManager
      */
-    public DesignDocumentManager getDesignDocumentManager() {
-        return new DesignDocumentManager(this);
-    }
+    DesignDocumentManager getDesignDocumentManager();
 
     /**
      * @param designDoc containing the view
@@ -452,9 +248,7 @@ public class Database {
      * @see <a target="_blank"
      * href="https://docs.cloudant.com/creating_views.html#using-views">Using views</a>
      */
-    public ViewRequestBuilder getViewRequestBuilder(String designDoc, String viewName) {
-        return new ViewRequestBuilder(client, this, designDoc, viewName);
-    }
+    ViewRequestBuilder getViewRequestBuilder(String designDoc, String viewName);
 
     /**
      * Build a request for the _all_docs endpoint.
@@ -469,34 +263,21 @@ public class Database {
      *
      * @return a request builder for the _all_docs endpoint of this database
      */
-    public AllDocsRequestBuilder getAllDocsRequestBuilder() {
-        return new AllDocsRequestBuilderImpl(new ViewQueryParameters<String,
-                AllDocsRequestResponse.Revision>(client, this, "", "", String.class,
-                AllDocsRequestResponse.Revision.class) {
-            protected URIBuilder getViewURIBuilder() {
-                return URIBuilder.buildUri(db.getDBUri()).path("_all_docs");
-            }
-        });
-    }
+    AllDocsRequestBuilder getAllDocsRequestBuilder();
 
     /**
      * Provides access for interacting with the changes feed.
      * <P>
-     * See the {@link com.cloudant.client.api.Changes} API for examples.
+     * See the {@link Changes} API for examples.
      * </P>
      *
      * @return a Changes object for using the changes feed
-     * @see com.cloudant.client.api.Changes
+     * @see Changes
      * @see <a target="_blank"
      * href="https://docs.cloudant.com/database.html#get-changes">Databases - get
      * changes</a>
      */
-    public com.cloudant.client.api.Changes changes() {
-        Changes couchDbChanges = db.changes();
-        com.cloudant.client.api.Changes changes = new com.cloudant.client.api.Changes
-                (couchDbChanges);
-        return changes;
-    }
+    Changes changes();
 
     /**
      * Retrieve the document with the specified ID from the database and deserialize to an
@@ -511,9 +292,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
-    public <T> T find(Class<T> classType, String id) {
-        return db.find(classType, id);
-    }
+    <T> T find(Class<T> classType, String id);
 
     /**
      * Retrieve the document with the specified ID from the database and deserialize to an
@@ -537,10 +316,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
-    public <T> T find(Class<T> classType, String id, Params params) {
-        assertNotEmpty(params, "params");
-        return db.find(classType, id, params.getInternalParams());
-    }
+    <T> T find(Class<T> classType, String id, Params params);
 
     /**
      * Retrieve the document with the specified ID at the specified revision from the database
@@ -561,9 +337,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
-    public <T> T find(Class<T> classType, String id, String rev) {
-        return db.find(classType, id, rev);
-    }
+    <T> T find(Class<T> classType, String id, String rev);
 
     /**
      * This method finds any document given a URI.
@@ -583,9 +357,7 @@ public class Database {
      * @param <T>       the type of Java object to return
      * @return an object of type T
      */
-    public <T> T findAny(Class<T> classType, String uri) {
-        return db.findAny(classType, uri);
-    }
+    <T> T findAny(Class<T> classType, String uri);
 
     /**
      * Finds the document with the specified document ID and returns it as an {@link InputStream}.
@@ -596,9 +368,7 @@ public class Database {
      * @throws NoDocumentException If the document is not found in the database.
      * @see #find(String, String)
      */
-    public InputStream find(String id) {
-        return db.find(id);
-    }
+    InputStream find(String id);
 
     /**
      * Finds the document with the specified document ID and revision and returns it as {@link
@@ -626,9 +396,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#read">Documents -
      * read</a>
      */
-    public InputStream find(String id, String rev) {
-        return db.find(id, rev);
-    }
+    InputStream find(String id, String rev);
 
     /**
      * Checks if a document exists in the database.
@@ -636,9 +404,7 @@ public class Database {
      * @param id the document _id field
      * @return {@code true} if the document is found, {@code false} otherwise
      */
-    public boolean contains(String id) {
-        return db.contains(id);
-    }
+    boolean contains(String id);
 
     /**
      * Saves a document in the database.
@@ -681,12 +447,7 @@ public class Database {
      * @return {@link Response}
      * @throws DocumentConflictException If a conflict is detected during the save.
      */
-    public com.cloudant.client.api.model.Response save(Object object) {
-        Response couchDbResponse = db.save(object);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response save(Object object);
 
     /**
      * Saves a document in the database similarly to {@link Database#save(Object)} but using a
@@ -701,12 +462,7 @@ public class Database {
      * href="https://docs.cloudant.com/document.html#quorum---writing-and-reading-data">
      * Documents - quorum</a>
      */
-    public com.cloudant.client.api.model.Response save(Object object, int writeQuorum) {
-        Response couchDbResponse = client.couchDbClient.put(getDBUri(), object, true, writeQuorum);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response save(Object object, int writeQuorum);
 
     /**
      * Creates a document in the database using a HTTP {@code POST} request.
@@ -727,12 +483,7 @@ public class Database {
      * @see <a target="_blank"
      * href="https://docs.cloudant.com/document.html#documentCreate">Documents - create</a>
      */
-    public com.cloudant.client.api.model.Response post(Object object) {
-        Response couchDbResponse = db.post(object);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response post(Object object);
 
     /**
      * Creates a document in the database similarly to {@link Database#post(Object)} but using a
@@ -746,22 +497,7 @@ public class Database {
      * href="https://docs.cloudant.com/document.html#quorum---writing-and-reading-data">
      * Documents - quorum</a>
      */
-    public com.cloudant.client.api.model.Response post(Object object, int writeQuorum) {
-        assertNotEmpty(object, "object");
-        InputStream response = null;
-        try {
-            URI uri = buildUri(getDBUri()).query("w", writeQuorum).build();
-            response = client.couchDbClient.executeToInputStream(createPost(uri, client.getGson()
-                            .toJson(object),
-                    "application/json"));
-            Response couchDbResponse = getResponse(response, Response.class, client.getGson());
-            com.cloudant.client.api.model.Response cloudantResponse = new com.cloudant.client.api
-                    .model.Response(couchDbResponse);
-            return cloudantResponse;
-        } finally {
-            close(response);
-        }
-    }
+    com.cloudant.client.api.model.Response post(Object object, int writeQuorum);
 
     /**
      * Updates an object in the database, the object must have the correct {@code _id} and
@@ -784,12 +520,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#update">Documents -
      * update</a>
      */
-    public com.cloudant.client.api.model.Response update(Object object) {
-        Response couchDbResponse = db.update(object);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response update(Object object);
 
     /**
      * Updates an object in the database similarly to {@link #update(Object)}, but specifying the
@@ -804,12 +535,7 @@ public class Database {
      * href="https://docs.cloudant.com/document.html#quorum---writing-and-reading-data">
      * Documents - quorum</a>
      */
-    public com.cloudant.client.api.model.Response update(Object object, int writeQuorum) {
-        Response couchDbResponse = client.couchDbClient.put(getDBUri(), object, false, writeQuorum);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response update(Object object, int writeQuorum);
 
     /**
      * Removes a document from the database.
@@ -830,12 +556,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#delete">Documents -
      * delete</a>
      */
-    public com.cloudant.client.api.model.Response remove(Object object) {
-        Response couchDbResponse = db.remove(object);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response remove(Object object);
 
     /**
      * Removes the document from the database with the specified {@code _id} and {@code _rev}
@@ -854,12 +575,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#delete">Documents -
      * delete</a>
      */
-    public com.cloudant.client.api.model.Response remove(String id, String rev) {
-        Response couchDbResponse = db.remove(id, rev);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response remove(String id, String rev);
 
     /**
      * Uses the {@code _bulk_docs} endpoint to insert multiple documents into the database in a
@@ -882,17 +598,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/document.html#bulk-operations">
      * Documents - bulk operations</a>
      */
-    public List<com.cloudant.client.api.model.Response> bulk(List<?> objects) {
-        List<Response> couchDbResponseList = db.bulk(objects, false);
-        List<com.cloudant.client.api.model.Response> cloudantResponseList = new ArrayList<com
-                .cloudant.client.api.model.Response>();
-        for (Response couchDbResponse : couchDbResponseList) {
-            com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                    .Response(couchDbResponse);
-            cloudantResponseList.add(response);
-        }
-        return cloudantResponseList;
-    }
+    List<com.cloudant.client.api.model.Response> bulk(List<?> objects);
 
     /**
      * Creates an attachment from the specified InputStream and a new document with a generated
@@ -913,13 +619,8 @@ public class Database {
      * @return {@link Response}
      * @see <a target="_blank" href="https://docs.cloudant.com/attachments.html">Attachments</a>
      */
-    public com.cloudant.client.api.model.Response saveAttachment(InputStream in, String name,
-                                                                 String contentType) {
-        Response couchDbResponse = db.saveAttachment(in, name, contentType);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response saveAttachment(InputStream in, String name,
+                                                          String contentType);
 
     /**
      * Creates or updates an attachment on the given document ID and revision.
@@ -951,14 +652,9 @@ public class Database {
      * @throws DocumentConflictException if the attachment cannot be saved because of a conflict
      * @see <a target="_blank" href="https://docs.cloudant.com/attachments.html">Attachments</a>
      */
-    public com.cloudant.client.api.model.Response saveAttachment(InputStream in, String name,
-                                                                 String contentType, String
-                                                                         docId, String docRev) {
-        Response couchDbResponse = db.saveAttachment(in, name, contentType, docId, docRev);
-        com.cloudant.client.api.model.Response response = new com.cloudant.client.api.model
-                .Response(couchDbResponse);
-        return response;
-    }
+    com.cloudant.client.api.model.Response saveAttachment(InputStream in, String name,
+                                                          String contentType, String
+                                                                  docId, String docRev);
 
     /**
      * Invokes an Update Handler.
@@ -988,18 +684,13 @@ public class Database {
      * href="https://docs.cloudant.com/design_documents.html#update-handlers">
      * Design documents - update handlers</a>
      */
-    public String invokeUpdateHandler(String updateHandlerUri, String docId,
-                                      Params params) {
-        assertNotEmpty(params, "params");
-        return db.invokeUpdateHandler(updateHandlerUri, docId, params.getInternalParams());
-    }
+    String invokeUpdateHandler(String updateHandlerUri, String docId,
+                               Params params);
 
     /**
      * @return The database URI.
      */
-    public URI getDBUri() {
-        return db.getDBUri();
-    }
+    URI getDBUri();
 
     /**
      * Get information about this database.
@@ -1008,9 +699,7 @@ public class Database {
      * @see <a target="_blank" href="https://docs.cloudant.com/database.html#read">Databases -
      * read</a>
      */
-    public DbInfo info() {
-        return client.couchDbClient.get(buildUri(getDBUri()).build(), DbInfo.class);
-    }
+    DbInfo info();
 
     /**
      * Requests the database commits any recent changes to disk.
@@ -1020,233 +709,5 @@ public class Database {
      * CouchDB _ensure_full_commit
      * </a>
      */
-    public void ensureFullCommit() {
-        db.ensureFullCommit();
-    }
-
-    // private helper methods
-
-    /**
-     * Form a create index json from parameters
-     */
-    private String getIndexDefinition(String indexName, String designDocName,
-                                      String indexType, IndexField[] fields) {
-        assertNotEmpty(fields, "index fields");
-        boolean addComma = false;
-        String json = "{";
-        if (!(indexName == null || indexName.isEmpty())) {
-            json += "\"name\": \"" + indexName + "\"";
-            addComma = true;
-        }
-        if (!(designDocName == null || designDocName.isEmpty())) {
-            if (addComma) {
-                json += ",";
-            }
-            json += "\"ddoc\": \"" + designDocName + "\"";
-            addComma = true;
-        }
-        if (!(indexType == null || indexType.isEmpty())) {
-            if (addComma) {
-                json += ",";
-            }
-            json += "\"type\": \"" + indexType + "\"";
-            addComma = true;
-        }
-
-        if (addComma) {
-            json += ",";
-        }
-        json += "\"index\": { \"fields\": [";
-        for (int i = 0; i < fields.length; i++) {
-            json += "{\"" + fields[i].getName() + "\": " + "\"" + fields[i].getOrder() + "\"}";
-            if (i + 1 < fields.length) {
-                json += ",";
-            }
-        }
-
-        return json + "] }}";
-    }
-
-    private String getFindByIndexBody(String selectorJson,
-                                      FindByIndexOptions options) {
-
-        StringBuilder rf = null;
-        if (options.getFields().size() > 0) {
-            rf = new StringBuilder("\"fields\": [");
-            int i = 0;
-            for (String s : options.getFields()) {
-                if (i > 0) {
-                    rf.append(",");
-                }
-                rf.append("\"").append(s).append("\"");
-                i++;
-            }
-            rf.append("]");
-        }
-
-        StringBuilder so = null;
-        if (options.getSort().size() > 0) {
-            so = new StringBuilder("\"sort\": [");
-            int i = 0;
-            for (IndexField idxfld : options.getSort()) {
-                if (i > 0) {
-                    so.append(",");
-                }
-                so.append("{\"")
-                        .append(idxfld.getName())
-                        .append("\": \"")
-                        .append(idxfld.getOrder())
-                        .append("\"}");
-                i++;
-            }
-            so.append("]");
-        }
-
-        //parse and find if valid json issue #28
-        boolean isObject = true;
-        try {
-            client.getGson().fromJson(selectorJson, JsonObject.class);
-        } catch (JsonParseException e) {
-            isObject = false;
-        }
-
-        if (!isObject) {
-            // needs to start with selector
-            if (!(selectorJson.trim().startsWith("\"selector\""))) {
-                throw new JsonParseException("selectorJson should be valid json or like " +
-                        "\"selector\": {...} ");
-            }
-        }
-
-        StringBuilder finalbody = new StringBuilder();
-        if (isObject) {
-            finalbody.append("{\"selector\": ")
-                    .append(selectorJson);
-        } else {
-            //old support
-            finalbody.append("{" + selectorJson);
-        }
-
-        if (rf != null) {
-            finalbody.append(",")
-                    .append(rf.toString());
-        }
-        if (so != null) {
-            finalbody.append(",")
-                    .append(so.toString());
-        }
-        if (options.getLimit() != null) {
-            finalbody.append(",")
-                    .append("\"limit\": ")
-                    .append(options.getLimit());
-        }
-        if (options.getSkip() != null) {
-            finalbody.append(",")
-                    .append("\"skip\": ")
-                    .append(options.getSkip());
-        }
-        if (options.getReadQuorum() != null) {
-            finalbody.append(",")
-                    .append("\"r\": ")
-                    .append(options.getReadQuorum());
-        }
-        if (options.getUseIndex() != null) {
-            finalbody.append(",")
-                    .append("\"use_index\": ")
-                    .append(options.getUseIndex());
-        }
-        finalbody.append("}");
-
-        return finalbody.toString();
-    }
-
-    Gson getGson() {
-        return client.getGson();
-    }
-}
-
-class ShardDeserializer implements JsonDeserializer<List<Shard>> {
-
-
-    public List<Shard> deserialize(JsonElement json, Type typeOfT,
-                                   JsonDeserializationContext context) throws JsonParseException {
-
-        final List<Shard> shards = new ArrayList<Shard>();
-
-        final JsonObject jsonObject = json.getAsJsonObject();
-        Set<Map.Entry<String, JsonElement>> shardsObj = jsonObject.get("shards").getAsJsonObject
-                ().entrySet();
-
-        for (Entry<String, JsonElement> entry : shardsObj) {
-            String range = entry.getKey();
-            List<String> nodeNames = context.deserialize(entry.getValue(), new
-                    TypeToken<List<String>>() {
-                    }.getType());
-            shards.add(new Shard(range, nodeNames));
-        }
-
-        return shards;
-    }
-}
-
-
-class IndexDeserializer implements JsonDeserializer<List<Index>> {
-
-
-    public List<Index> deserialize(JsonElement json, Type typeOfT,
-                                   JsonDeserializationContext context) throws JsonParseException {
-
-        final List<Index> indices = new ArrayList<Index>();
-
-        final JsonObject jsonObject = json.getAsJsonObject();
-        JsonArray indArray = jsonObject.get("indexes").getAsJsonArray();
-        for (int i = 0; i < indArray.size(); i++) {
-            JsonObject ind = indArray.get(i).getAsJsonObject();
-            String ddoc = null;
-            if (!ind.get("ddoc").isJsonNull()) { // ddoc is optional
-                ddoc = ind.get("ddoc").getAsString();
-            }
-            Index idx = new Index(ddoc, ind.get("name").getAsString(),
-                    ind.get("type").getAsString());
-            JsonArray fldArray = ind.get("def").getAsJsonObject().get("fields").getAsJsonArray();
-            for (int j = 0; j < fldArray.size(); j++) {
-                Set<Map.Entry<String, JsonElement>> fld = fldArray.get(j).getAsJsonObject()
-                        .entrySet();
-                for (Entry<String, JsonElement> entry : fld) {
-                    idx.addIndexField(entry.getKey(),
-                            SortOrder.valueOf(entry.getValue().getAsString())
-                    );
-                }
-            }//end fldArray
-            indices.add(idx);
-
-        }// end indexes
-
-        return indices;
-    }
-}
-
-class SecurityDeserializer implements JsonDeserializer<Map<String, EnumSet<Permissions>>> {
-
-
-    public Map<String, EnumSet<Permissions>> deserialize(JsonElement json, Type typeOfT,
-                                                         JsonDeserializationContext context)
-            throws JsonParseException {
-
-        Map<String, EnumSet<Permissions>> perms = new HashMap<String, EnumSet<Permissions>>();
-        JsonElement elem = json.getAsJsonObject().get("cloudant");
-        if (elem == null) {
-            return perms;
-        }
-        Set<Map.Entry<String, JsonElement>> permList = elem.getAsJsonObject().entrySet();
-        for (Entry<String, JsonElement> entry : permList) {
-            String user = entry.getKey();
-            EnumSet<Permissions> p = context.deserialize(entry.getValue(), new
-                    TypeToken<EnumSet<Permissions>>() {
-                    }.getType());
-            perms.put(user, p);
-        }
-        return perms;
-
-    }
+    void ensureFullCommit();
 }

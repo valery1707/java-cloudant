@@ -1,4 +1,4 @@
-package client;
+package com.cloudant.client.api.cache;
 
 import java.util.List;
 import java.util.Map;

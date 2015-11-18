@@ -15,15 +15,13 @@
 package com.cloudant.client.api.cache;
 
 import com.cloudant.client.api.Database;
-import com.cloudant.client.internal.cache.CacheInvocationHandler;
-
-import java.lang.reflect.Proxy;
+import com.cloudant.client.internal.cache.CacheDecorator;
+import com.cloudant.client.internal.decorator.DecoratorProxy;
 
 public class CacheDatabaseDecorator {
 
     public static Database cacheDatabase(Database db, Cache<String, Object> cache) {
-        return (Database) Proxy.newProxyInstance(CacheDatabaseDecorator.class.getClassLoader(), new
-                Class[]{Database.class}, new CacheInvocationHandler(db, cache));
+        return DecoratorProxy.decorate(Database.class, db, new CacheDecorator(cache));
     }
 
 }

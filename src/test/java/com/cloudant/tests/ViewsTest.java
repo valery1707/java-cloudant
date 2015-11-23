@@ -626,7 +626,8 @@ public class ViewsTest {
         db.save(new Foo()).getId();
         db.save(new Foo()).getId();
 
-        List<String> allDocIds = db.getAllDocsRequestBuilder().keys(id1, id2).build().getResponse().getDocIds();
+        List<String> allDocIds = db.getAllDocsRequestBuilder().keys(id1, id2).build().getResponse
+                ().getDocIds();
         assertThat(allDocIds.size(), is(2));
     }
 
@@ -925,5 +926,28 @@ public class ViewsTest {
         ViewRequest<String, Object> paginatedQuery = db.getViewRequestBuilder("example", "foo")
                 .newRequest(Key.Type.STRING,
                         Object.class).reduce(false).group(true).build();
+    }
+
+    /**
+     * Test that we can retrieve documents with complex keys like:
+     * ["uuid", 1000], ["uuid", 1001], ["uuid", 1002]
+     * <P>
+     * This requires query parameters of
+     * {@code startkey=["uuid"]}
+     * and {@code endKey=["uuid", {}]} or {@code endKey=["uuid", "\ufff0"]}
+     * </P>
+     *
+     * @throws Exception
+     */
+    @Test
+    public void complexKeyHighValueSentinel() throws Exception {
+        //init some documents we can use with complex key
+        init();
+        ViewRequest<Key.ComplexKey, Object> query = db.getViewRequestBuilder("example",
+                "creator_created").newRequest(Key.Type.COMPLEX, Object.class)
+                .startKey(Key.complex("uuid"))
+                .endKey(Key.complex("uuid").add("\ufff0"))
+                .build();
+        assertEquals("There should be 3 documents", 3, query.getResponse().getRows().size());
     }
 }

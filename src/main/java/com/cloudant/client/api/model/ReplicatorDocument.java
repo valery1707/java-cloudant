@@ -228,12 +228,40 @@ public class ReplicatorDocument {
         replicatorDocument.setRetriesPerRequest(retriesPerRequest);
     }
 
-    public Integer getSinceSeq() {
+    /**
+     *
+     * @return string representation of since_seq JSON value
+     */
+    public String getSince_Seq() {
         return replicatorDocument.getSinceSeq();
     }
 
-    public void setSinceSeq(Integer sinceSeq) {
+    /**
+     * Set the since_seq for this ReplicatorDocument.
+     *
+     * @param sinceSeq string representation of JSON value for since_seq
+     */
+    public void setSinceSeq(String sinceSeq) {
         replicatorDocument.setSinceSeq(sinceSeq);
+    }
+
+    /**
+     * Some systems may not represent seq as an int, use {@link ReplicatorDocument#getSince_Seq()}
+     * for a String representation instead.
+     * @return since_seq as an int if conversion is possible
+     */
+    @Deprecated
+    public Integer getSinceSeq() {
+        return Integer.parseInt(getSince_Seq());
+    }
+
+    /**
+     * Use {@link ReplicatorDocument#setSinceSeq(String)} instead.
+     * @param sinceSeq integer since_seq
+     */
+    @Deprecated
+    public void setSinceSeq(Integer sinceSeq) {
+        setSinceSeq(sinceSeq.toString());
     }
 
 

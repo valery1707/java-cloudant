@@ -210,6 +210,11 @@ public class Replicator {
     }
 
     public Replicator sinceSeq(Integer sinceSeq) {
+        sinceSeq(sinceSeq.toString());
+        return this;
+    }
+
+    public Replicator sinceSeq(String sinceSeq) {
         this.replicator = replicator.sinceSeq(sinceSeq);
         return this;
     }

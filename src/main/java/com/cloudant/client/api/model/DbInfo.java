@@ -15,6 +15,7 @@
 package com.cloudant.client.api.model;
 
 
+import com.google.gson.JsonElement;
 import com.google.gson.annotations.SerializedName;
 
 /**
@@ -30,9 +31,9 @@ public class DbInfo {
     @SerializedName("doc_del_count")
     private String docDelCount;
     @SerializedName("update_seq")
-    private String updateSeq;
+    private JsonElement updateSeq;
     @SerializedName("purge_seq")
-    private long purgeSeq;
+    private JsonElement purgeSeq;
     @SerializedName("compact_running")
     private boolean compactRunning;
     @SerializedName("disk_size")
@@ -55,11 +56,22 @@ public class DbInfo {
     }
 
     public String getUpdateSeq() {
-        return updateSeq;
+        return updateSeq.toString();
     }
 
+    public String getPurge_Seq() {
+        return purgeSeq.toString();
+    }
+
+    /**
+     * Some systems may not represent seq as a long, use {@link DbInfo#getPurge_Seq()} for a
+     * String representation instead.
+     *
+     * @return the purge_seq as a long if it can be converted
+     */
+    @Deprecated
     public long getPurgeSeq() {
-        return purgeSeq;
+        return purgeSeq.getAsLong();
     }
 
     public boolean isCompactRunning() {
@@ -82,7 +94,8 @@ public class DbInfo {
     public String toString() {
         return String
                 .format("CouchDbInfo [dbName=%s, docCount=%s, docDelCount=%s, updateSeq=%s, " +
-                                "purgeSeq=%s, compactRunning=%s, diskSize=%s, instanceStartTime=%s, diskFormatVersion=%s]",
+                                "purgeSeq=%s, compactRunning=%s, diskSize=%s, " +
+                                "instanceStartTime=%s, diskFormatVersion=%s]",
                         dbName, docCount, docDelCount, updateSeq, purgeSeq,
                         compactRunning, diskSize, instanceStartTime,
                         diskFormatVersion);

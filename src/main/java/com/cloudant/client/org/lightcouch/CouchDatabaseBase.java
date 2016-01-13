@@ -386,14 +386,6 @@ public abstract class CouchDatabaseBase {
 
     // End - Public API
 
-
-    /**
-     * @return {@link CouchDbInfo} Containing the DB info.
-     */
-    public CouchDbInfo info() {
-        return couchDbClient.get(new DatabaseURIHelper(dbUri).getDatabaseUri(), CouchDbInfo.class);
-    }
-
     /**
      * Triggers a database <i>compact</i> request.
      */

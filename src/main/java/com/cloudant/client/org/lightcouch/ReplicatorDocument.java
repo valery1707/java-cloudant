@@ -15,6 +15,7 @@
 
 package com.cloudant.client.org.lightcouch;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -64,7 +65,7 @@ public class ReplicatorDocument extends Document {
     @SerializedName("user_ctx")
     private UserCtx userCtx;
     @SerializedName("since_seq")
-    private Integer sinceSeq;
+    private JsonElement sinceSeq;
 
     public String getSource() {
         return getEndpointUrl(source);
@@ -213,12 +214,12 @@ public class ReplicatorDocument extends Document {
         this.retriesPerRequest = retriesPerRequest;
     }
 
-    public Integer getSinceSeq() {
-        return sinceSeq;
+    public String getSinceSeq() {
+        return sinceSeq.toString();
     }
 
-    public void setSinceSeq(Integer sinceSeq) {
-        this.sinceSeq = sinceSeq;
+    public void setSinceSeq(String sinceSeq) {
+        this.sinceSeq = new Gson().fromJson(sinceSeq, JsonElement.class);
     }
 
     public class UserCtx {

@@ -38,9 +38,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
-import com.squareup.okhttp.ConnectionPool;
 
 import org.apache.commons.io.IOUtils;
+
+import okhttp3.ConnectionPool;
+import okhttp3.JavaNetAuthenticator;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -94,15 +96,20 @@ public class CouchDbClient {
 
         //if OkHttp is available then use it for connection pooling, otherwise default to the
         //JVM built-in pooling for HttpUrlConnection
-        if (OkHttpClientHttpUrlConnectionFactory.isOkUsable() && props.getMaxConnections() > 0) {
+        if (OkHttpClientHttpUrlConnectionFactory.isOkUsable()) {
             OkHttpClientHttpUrlConnectionFactory factory = new
                     OkHttpClientHttpUrlConnectionFactory();
-            //keep connections open for as long as possible, anything over 2.5 minutes will be
-            //longer than the server
-            ConnectionPool pool = new ConnectionPool(props.getMaxConnections(), TimeUnit.MINUTES
-                    .toMillis(3));
-            factory.getOkHttpClient().setConnectionPool(pool);
             this.factory = factory;
+            factory.getOkHttpClientBuilder().proxyAuthenticator(new JavaNetAuthenticator());
+            factory.getOkHttpClientBuilder().authenticator(new JavaNetAuthenticator());
+            if (props.getMaxConnections() > 0) {
+                //keep connections open for as long as possible, anything over 2.5 minutes will be
+                //longer than the server
+                ConnectionPool pool = new ConnectionPool(props.getMaxConnections(), 3l, TimeUnit
+                        .MINUTES);
+                factory.getOkHttpClientBuilder().connectionPool(pool);
+            }
+
         } else {
             factory = new DefaultHttpUrlConnectionFactory();
         }

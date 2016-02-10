@@ -14,10 +14,10 @@
 
 package com.cloudant.tests.util;
 
-import com.squareup.okhttp.mockwebserver.MockResponse;
-import com.squareup.okhttp.mockwebserver.MockWebServer;
-
 import org.junit.rules.ExternalResource;
+
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 
 import java.io.FileInputStream;
 import java.io.IOException;

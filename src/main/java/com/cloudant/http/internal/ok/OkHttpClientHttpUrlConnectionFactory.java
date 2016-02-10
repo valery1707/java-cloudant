@@ -15,8 +15,9 @@
 package com.cloudant.http.internal.ok;
 
 import com.cloudant.http.internal.DefaultHttpUrlConnectionFactory;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.OkUrlFactory;
+
+import okhttp3.OkHttpClient;
+import okhttp3.OkUrlFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -27,15 +28,15 @@ import java.net.URL;
  */
 public class OkHttpClientHttpUrlConnectionFactory extends DefaultHttpUrlConnectionFactory {
 
-    private final OkHttpClient client;
-    private final OkUrlFactory factory;
+    private final OkHttpClient.Builder clientBuilder = new OkHttpClient().newBuilder();
+    private OkUrlFactory factory = null;
 
     private final static boolean okUsable;
 
     static {
         Class<?> okFactoryClass;
         try {
-            okFactoryClass = Class.forName("com.squareup.okhttp.OkUrlFactory");
+            okFactoryClass = Class.forName("okhttp3.OkUrlFactory");
         } catch (Throwable t) {
             okFactoryClass = null;
         }
@@ -46,25 +47,22 @@ public class OkHttpClientHttpUrlConnectionFactory extends DefaultHttpUrlConnecti
         return okUsable;
     }
 
-
-    public OkHttpClientHttpUrlConnectionFactory() {
-        client = new OkHttpClient();
-        factory = new OkUrlFactory(client);
-    }
-
     @Override
     public HttpURLConnection openConnection(URL url) throws IOException {
+        if (factory == null) {
+            factory = new OkUrlFactory(clientBuilder.build());
+        }
         return factory.open(url);
     }
 
     @Override
     public void setProxy(URL proxyUrl) {
         super.setProxy(proxyUrl);
-        client.setProxy(proxy);
+        clientBuilder.proxy(proxy).build();
     }
 
-    public OkHttpClient getOkHttpClient() {
-        return client;
+    public OkHttpClient.Builder getOkHttpClientBuilder() {
+        return clientBuilder;
     }
 
 

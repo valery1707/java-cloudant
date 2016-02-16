@@ -17,6 +17,7 @@ import com.cloudant.http.internal.DefaultHttpUrlConnectionFactory;
 import org.apache.commons.io.IOUtils;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -145,6 +146,7 @@ public class HttpConnection {
      *
      * @param input InputStream of request body data to be sent to the server
      * @return an {@link HttpConnection} for method chaining
+     * @deprecated Use {@link #setRequestBody(InputStreamGenerator)}
      */
     public HttpConnection setRequestBody(final InputStream input) {
         // -1 signals inputLength unknown
@@ -157,14 +159,10 @@ public class HttpConnection {
      * @param input       InputStream of request body data to be sent to the server
      * @param inputLength Length of request body data to be sent to the server, in bytes
      * @return an {@link HttpConnection} for method chaining
+     * @deprecated Use {@link #setRequestBody(InputStreamGenerator, long)}
      */
     public HttpConnection setRequestBody(final InputStream input, final long inputLength) {
-        return setRequestBody(new InputStreamGenerator() {
-            @Override
-            public InputStream getInputStream() {
-                return input;
-            }
-        }, inputLength);
+        return setRequestBody(new InputStreamWrappingGenerator(input, inputLength), inputLength);
     }
 
     /**
@@ -397,12 +395,66 @@ public class HttpConnection {
      * An InputStreamGenerator has a single method getInputStream. Implementors return an
      * InputStream ready for consuming by the HttpConnection. The purpose of this is to
      * facilitate regeneration of an InputStream for cases where a payload is going to be resent
-     * for a retry.
+     * for a retry. Implementors must not return the same InputStream instance from multiple calls
+     * to {@link #getInputStream()} unless the stream has been reset.
      */
     public interface InputStreamGenerator {
         /**
          * @return an InputStream to use to read the body content for a HTTP request
          */
         InputStream getInputStream();
+    }
+
+    /**
+     * Implementation of InputStreamGenerator that checks if an InputStream is markable and performs
+     * the necessary mark/reset required to do retries. If the supplied InputStream does not
+     * support marking then it is copied into memory in a stream that does support marking.
+     */
+    private static final class InputStreamWrappingGenerator implements InputStreamGenerator {
+
+        private final InputStream inputStream;
+
+        InputStreamWrappingGenerator(InputStream inputStream, Long size) {
+            if (!inputStream.markSupported()) {
+                // If we can't mark/reset the stream then we read it into memory as a
+                // ByteArrayInputStream so we are then able to mark/reset it for retries
+
+                // Set the buffer size based on the stream length if available, default to 4k for
+                // unknown lengths
+                int bufferSize = (size < 0) ? 4096 : (size > Integer.MAX_VALUE) ? Integer
+                        .MAX_VALUE : size.intValue();
+
+                ByteArrayOutputStream copyOutputStream = new ByteArrayOutputStream(bufferSize);
+                try {
+                    final byte[] bytes = new byte[bufferSize];
+                    int i;
+                    while ((i = inputStream.read(bytes)) > -1) {
+                        // Write at most the number of bytes read
+                        copyOutputStream.write(bytes, 0, i);
+                    }
+                    this.inputStream = new ByteArrayInputStream(copyOutputStream.toByteArray());
+                } catch (IOException e) {
+                    //TODO handle
+                    throw new RuntimeException(e);
+                }
+            } else {
+                this.inputStream = inputStream;
+            }
+            // Now we should have a stream that supports marking, so mark it at the beginning,
+            // ready for a reset if we need to retry later. Note use MAX_VALUE to allow as many
+            // bytes as possible to be read before invalidating the mark.
+            this.inputStream.mark(Integer.MAX_VALUE);
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            // Reset the stream to the beginning
+            try {
+                this.inputStream.reset();
+            } catch (IOException e) {
+                //TODO handle
+            }
+            return this.inputStream;
+        }
     }
 }
